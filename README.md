@@ -10,7 +10,7 @@ You can use packages like `kmod-ledtrig-netdev` to trigger the LEDs for network 
 \
 **r8168-8.048.03**
 
-NIC drivers to Realtek RTL8111E with support for customized LEDs.\
+NIC drivers to Realtek RTL8111E with support for customized LEDs. Designed for PC Engines APU1.\
 The APU1 board has LED0 (green) and LED1 (amber) connected. Default flashes LED0 for network activity, for all speeds, and LED1 is lit for Link100M.
 I have change the drivers so LED0 is lit for Link, all speeds, and flashes for network activity, all speeds, and LED1 is lit for Link1G.\
 That equals hex-word 0x004F, according to table:
