@@ -1,0 +1,7 @@
+config LEDS_APU1
+        tristate "PC Engines APU1 LED and buttom support"
+        depends on LEDS_CLASS
+        depends on LEDS_GPIO
+        depends on GPIOLIB
+        help
+          Enables support for the CPU GPIO pins on the PC Engines APU1 board, which enables the front LEDs and buttom.
