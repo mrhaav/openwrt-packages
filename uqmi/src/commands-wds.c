@@ -136,7 +136,7 @@ cmd_wds_set_pdp_type_prepare(struct qmi_dev *qmi, struct qmi_request *req, struc
 		const char *name;
 		const QmiWdsPdpType type;
 	} types[] = {
-		{ "ip", QMI_WDS_PDP_TYPE_IPV4 },
+		{ "ipv4", QMI_WDS_PDP_TYPE_IPV4 },
 		{ "ipv6", QMI_WDS_PDP_TYPE_IPV6 },
 		{ "ipv4v6", QMI_WDS_PDP_TYPE_IPV4_OR_IPV6 },
 	};
@@ -150,7 +150,7 @@ cmd_wds_set_pdp_type_prepare(struct qmi_dev *qmi, struct qmi_request *req, struc
 		return QMI_CMD_DONE;
 	}
 
-	uqmi_add_error("Invalid value (valid: ip, ipv6, ipv4v6)");
+	uqmi_add_error("Invalid value (valid: ipv4, ipv6, ipv4v6)");
 	return QMI_CMD_EXIT;
 }
 
@@ -414,7 +414,7 @@ cmd_wds_get_profile_settings_cb(struct qmi_dev *qmi, struct qmi_request *req, st
 		[QMI_WDS_PDP_TYPE_IPV4] = "ipv4",
 		[QMI_WDS_PDP_TYPE_PPP] = "ppp",
 		[QMI_WDS_PDP_TYPE_IPV6] = "ipv6",
-		[QMI_WDS_PDP_TYPE_IPV4_OR_IPV6] = "ipv4-or-ipv6",
+		[QMI_WDS_PDP_TYPE_IPV4_OR_IPV6] = "ipv4v6",
 	};
 
         const char *authtypes[] = {
@@ -453,7 +453,7 @@ cmd_wds_get_current_settings_cb(struct qmi_dev *qmi, struct qmi_request *req, st
 		[QMI_WDS_PDP_TYPE_IPV4] = "ipv4",
 		[QMI_WDS_PDP_TYPE_PPP] = "ppp",
 		[QMI_WDS_PDP_TYPE_IPV6] = "ipv6",
-		[QMI_WDS_PDP_TYPE_IPV4_OR_IPV6] = "ipv4-or-ipv6",
+		[QMI_WDS_PDP_TYPE_IPV4_OR_IPV6] = "ipv4v6",
 	};
 	const struct ip_modes {
 		const char *name;
