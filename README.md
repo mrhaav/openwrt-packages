@@ -26,12 +26,8 @@ If you want a different behavior, just change the hex-word in file r8168_n.c und
 Files "Realtek_" are the original files from the driver package, https://www.realtek.com/en/component/zoo/category/network-interface-controllers-10-100-1000m-gigabit-ethernet-pci-express-software
 \
 \
-**uqmi
-
+**uqmi**
 Control utility for mobile broadband modems. Based on https://git.openwrt.org/project/uqmi.git 2021-11-22.
-\
-- Added command wds: --get-default-profile-number
--                    --get-profile-settings
--                    --modify-profile
-\
+
+- Added command wds: --get-default-profile-number, --get-profile-settings, --modify-profile
 - Added command dms: --get-device-operating-mode
