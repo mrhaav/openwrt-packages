@@ -361,7 +361,7 @@ print_system_info(uint8_t svc_status, uint8_t tsvc_status, bool preferred, bool 
 			blobmsg_add_string(&status, "roaming_status", map_roaming[roaming_status]);
 		if (forbidden_valid)
 			blobmsg_add_u8(&status, "forbidden", forbidden);
-		if (cid_valid)
+		if (network_id_valid) {
 			blobmsg_add_string(&status, "mcc", mcc);
 			if ((uint8_t)mnc[2] == 255)
 				mnc[2] = 0;
