@@ -121,7 +121,7 @@ proto_qmi_setup() {
 		echo Check pdptype and auth settings
 		return 1
 	fi
-	json_load "$(uqmi -s -d "$device" --get-default-profile-num 3gpp)"
+	json_load "$(uqmi -s -d "$device" --get-default-profile-number 3gpp)"
 	json_get_var default_profile default-profile
 	echo Default profile number: $default_profile
 	json_load "$(uqmi -s -d "$device" --get-profile-settings 3gpp,$default_profile)"
@@ -153,6 +153,11 @@ proto_qmi_setup() {
 			done
 		fi
 		echo Change default APN profile
+		[ "$def_apn" != "$apn" ] && echo apn: $def_apn -> $apn
+		[ "$def_pdptype" != "$pdptype" ] && echo pdp-rype: $def_pdptype -> $pdptype
+		[ "$def_username" != "$username" ] && echo username: def_username -> $username
+		[ "$def_password" != "$password" ] && echo password changed
+		[ "$def_auth" != "$auth" ]  && authentication: $def_auth -> $auth
 		uqmi -d "$device" --modify-profile 3gpp,$default_profile \
 			--apn "$apn" \
 			--pdp-type "$pdptype" \
