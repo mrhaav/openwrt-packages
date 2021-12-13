@@ -31,6 +31,8 @@ Files "Realtek_" are the original files from the driver package, https://www.rea
 
 Control utility for mobile broadband modems. Based on https://git.openwrt.org/project/uqmi.git 2021-11-22.
 
+- qmi.sh: The modem is initiated with the default APN profile.
+
 - nas: Add decoding of lte_system_info_v2.cid and intrafrequency_lte_info_v2.global_cell_id to enodeb_id and cell_id and decoding of wcdma_system_info_v2.cid to rnc_id and cell_id. Change order to mcc-mnc-tac/lac-enodeb_id/rnc_id-cell_id.
 - wds: Added command: --get-default-profile-number, --get-profile-settings, --modify-profile
 - dms: Added command: --get-device-operating-mode
