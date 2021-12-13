@@ -27,7 +27,9 @@ Files "Realtek_" are the original files from the driver package, https://www.rea
 \
 \
 **uqmi**
+
 Control utility for mobile broadband modems. Based on https://git.openwrt.org/project/uqmi.git 2021-11-22.
 
-- Added command wds: --get-default-profile-number, --get-profile-settings, --modify-profile
-- Added command dms: --get-device-operating-mode
+- nas: Added decoding of 
+- wds: Added command: --get-default-profile-number, --get-profile-settings, --modify-profile
+- dms: Added command: --get-device-operating-mode
