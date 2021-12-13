@@ -58,7 +58,7 @@
 		"  --get-default-profile-number <val>:  Get default profile number (3gpp, 3gpp2)\n" \
 		"  --modify-profile <val>,#          Modify profile number (3gpp, 3gpp2)\n" \
 		"    --apn <apn>:                    Use APN\n" \
-		"    --pdp-type ip|ipv6|ipv4v6>:     Use pdp-type for the connection\n" \
+		"    --pdp-type ipv4|ipv6|ipv4v6>:   Use pdp-type for the connection\n" \
 		"    --username <name>:              Use network username\n" \
 		"    --password <password>:          Use network password\n" \
 		"    --auth-type pap|chap|both|none: Use network authentication type\n" \
