@@ -43,7 +43,7 @@ static enum qmi_cmd_result
 cmd_wds_set_apn_prepare(struct qmi_dev *qmi, struct qmi_request *req, struct qmi_msg *msg, char *arg)
 {
 	qmi_set_ptr(&wds_sn_req, apn, arg);
-	qmi_set_ptr(&wds_mp_req, apn, arg);
+	qmi_set_ptr(&wds_mp_req, apn_name, arg);
 	return QMI_CMD_DONE;
 }
 
