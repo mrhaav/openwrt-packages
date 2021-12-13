@@ -32,7 +32,7 @@ static struct qmi_wds_start_network_request wds_sn_req = {
 static struct qmi_wds_stop_network_request wds_stn_req;
 
 static struct qmi_wds_modify_profile_request wds_mp_req = {
-	QMI_INIT_SEQUENCE(profile_id,
+	QMI_INIT_SEQUENCE(profile_identifier,
 		.profile_type = QMI_WDS_PROFILE_TYPE_3GPP,
 		.profile_index = 1,
 	)
@@ -235,8 +235,8 @@ cmd_wds_modify_profile_prepare(struct qmi_dev *qmi, struct qmi_request *req, str
 		if (strcasecmp(ptypes[i].name, p_type) != 0)
 			continue;
 
-		qmi_set_ptr(&wds_mp_req, profile_id.profile_type, ptypes[i].type);
-		qmi_set_ptr(&wds_mp_req, profile_id.profile_index, id);
+		qmi_set_ptr(&wds_mp_req, profile_identifier.profile_type, ptypes[i].type);
+		qmi_set_ptr(&wds_mp_req, profile_identifier.profile_index, id);
 		
 		qmi_set_wds_modify_profile_request(msg, &wds_mp_req);
 		return QMI_CMD_REQUEST;
@@ -560,14 +560,14 @@ cmd_wds_get_default_profile_number_prepare(struct qmi_dev *qmi, struct qmi_reque
 		if (strcasecmp(ptypes[i].name, arg) != 0)
 			continue;
 
-		struct qmi_wds_get_default_profile_num_request type_family = {
+		struct qmi_wds_get_default_profile_number_request type_family = {
 			QMI_INIT_SEQUENCE(profile_type,
 				.type = ptypes[i].type,
 				.family = QMI_WDS_PROFILE_FAMILY_TETHERED,
 			)
 		};
 
-		qmi_set_wds_get_default_profile_num_request(msg, &type_family);
+		qmi_set_wds_get_default_profile_number_request(msg, &type_family);
 		return QMI_CMD_REQUEST;
 	}
 
@@ -578,9 +578,9 @@ cmd_wds_get_default_profile_number_prepare(struct qmi_dev *qmi, struct qmi_reque
 static void
 cmd_wds_get_default_profile_number_cb(struct qmi_dev *qmi, struct qmi_request *req, struct qmi_msg *msg)
 {
-	struct qmi_wds_get_default_profile_num_response res;
+	struct qmi_wds_get_default_profile_number_response res;
 	void *p;
-	qmi_parse_wds_get_default_profile_num_response(msg, &res);
+	qmi_parse_wds_get_default_profile_number_response(msg, &res);
 
 	p = blobmsg_open_table(&status, NULL);
 
