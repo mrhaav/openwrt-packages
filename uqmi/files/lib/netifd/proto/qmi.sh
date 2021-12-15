@@ -30,7 +30,7 @@ proto_qmi_init_config() {
 
 proto_qmi_setup() {
 	local interface="$1"
-	local dataformat connstat
+	local dataformat connstat plmn_mode mcc mnc
 	local device apn auth username password pincode delay modes pdptype
 	local profile dhcp dhcpv6 autoconnect plmn timeout mtu $PROTO_DEFAULT_OPTIONS
 	local ip4table ip6table
@@ -82,12 +82,12 @@ proto_qmi_setup() {
 	}
 
 # Check PIN status
-	pin_status=$(uqmi -s -d "$device"  --uim-get-sim-state -t 2000 2>&1)
+	pin_status=$(uqmi -s -d "$device" --uim-get-sim-state -t 2000 2>&1)
 	while [ ${pin_status:0:1} = 'R' ]
 	do
 		echo Wait for modem to initiate
 		sleep 2
-		pin_status=$(uqmi -s -d "$device"  --uim-get-sim-state -t 2000 2>&1)
+		pin_status=$(uqmi -s -d "$device" --uim-get-sim-state -t 2000 2>&1)
 	done
 	if [ ${pin_status:0:1} != '{' ]
 	then
@@ -99,6 +99,8 @@ proto_qmi_setup() {
 		if [ $pin1_status != "disabled" ]
 		then
 			echo De-activate the PINcode
+			proto_notify_error "$interface" PIN_NOT_DE-ACTIVATED
+			proto_block_restart "$interface"
 			return 1
 		fi
 	fi
@@ -119,7 +121,15 @@ proto_qmi_setup() {
 	if [ -z $pdptype ] || [ -z $auth ]
 	then
 		echo Check pdptype and auth settings
+		proto_notify_error "$interface" PDP-TYPE_OR_AUTH_MISSING
+		proto_block_restart "$interface"
 		return 1
+	fi
+	if [ $pdptype = 'ipv4' ] || [ $pdptype = 'ipv4v6' ]
+	then
+		pdptype_def='ipv4'
+	else
+		pdptype_def='ipv6'
 	fi
 	json_load "$(uqmi -s -d "$device" --get-default-profile-number 3gpp)"
 	json_get_var default_profile default-profile
@@ -131,7 +141,7 @@ proto_qmi_setup() {
 	json_get_var def_password password
 	json_get_var def_auth auth
 	[ "$def_apn" != "$apn" ] && update_default_apn=true
-	[ "$def_pdptype" != "$pdptype" ] && update_default_apn=true
+	[ "$def_pdptype" != "$pdptype_def" ] && update_default_apn=true
 	[ "$def_username" != "$username" ] && update_default_apn=true
 	[ "$def_password" != "$password" ] && update_default_apn=true
 	[ "$def_auth" != "$auth" ]  && update_default_apn=true
@@ -152,19 +162,52 @@ proto_qmi_setup() {
 				json_get_var registration registration
 			done
 		fi
-		echo Change default APN profile
+		echo Change default profile
 		[ "$def_apn" != "$apn" ] && echo apn: $def_apn to $apn
-		[ "$def_pdptype" != "$pdptype" ] && echo pdp-type: $def_pdptype to $pdptype
+		[ "$def_pdptype" != "$pdptype_def" ] && echo pdp-type: $def_pdptype to $pdptype_def
 		[ "$def_username" != "$username" ] && echo username: def_username to $username
 		[ "$def_password" != "$password" ] && echo password changed
 		[ "$def_auth" != "$auth" ]  && authentication: $def_auth to $auth
 		uqmi -d "$device" --modify-profile 3gpp,$default_profile \
 			--apn "$apn" \
-			--pdp-type "$pdptype" \
+			--pdp-type "$pdptype_def" \
 			--username "$username" \
 			--password "$password" \
 			--auth "$auth"
 	fi
+
+# Configure profile for dual-stack
+	if [ $pdptype = 'ipv4v6' ]
+	then
+		echo Configure profile for dual-stack
+		dualstack_profile=$((default_profile+1))
+		pdptype_ds='ipv6'
+		modify_ds=$(uqmi -d "$device" --modify-profile 3gpp,$dualstack_profile \
+					--apn "$apn" \
+					--pdp-type "$pdptype_ds" \
+					--username "$username" \
+					--password "$password" \
+					--auth "$auth" 2>&1)
+		if [ ! -z "$modify_ds" ]
+		then
+			create_ds=$(uqmi -s -d "$device" --create-profile 3gpp \
+						--apn "$apn" \
+						--pdp-type "$pdptype_ds" \
+						--username "$username" \
+						--password "$password" \
+						--auth "$auth" 2>&1)
+			if [ ${create_ds:0:1} != '{' ]
+			then
+				echo Can´t create profile for dual-stack
+				pdptype='ipv4'
+			else
+				json_load $create_ds
+				json_get_var dualstack_profile created-profile
+			fi
+		fi
+		echo Dual-stack profile number: $dualstack_profile
+	fi
+
 	op_mode=$(uqmi -d "$device" --get-device-operating-mode)
 	if [ $op_mode != '"online"' ]
 	then
@@ -172,6 +215,7 @@ proto_qmi_setup() {
 		uqmi -d "$device" --set-device-operating-mode online
 		sleep 1
 	fi
+
 # Check registered network and used radio technology
 	json_load "$(uqmi -s -d "$device" --get-serving-system)"
 	json_get_var registration registration
@@ -196,20 +240,62 @@ proto_qmi_setup() {
 	then
 		echo Can´t register to $operator on $radio_type
 		echo Check subscription or APN settings
+		proto_notify_error "$interface" REGISTRATION_FAILED
+		proto_block_restart "$interface"
 		return 1
 	fi
 	echo Registered to $operator on $radio_type
 	sleep 1
+
 # Start network interface
-	cid_4=$(uqmi -s -d "$device" --get-client-id wds)
-	pdh_4=$(uqmi -s -d "$device" --set-client-id wds,"$cid_4" \
-					--start-network \
-					--profile $default_profile)
-	
-	if ! [ "$pdh_4" -eq "$pdh_4" ] 2> /dev/null
+	if [ $pdptype_def = 'ipv4' ]
 	then
-		echo Can´t connect, check APN settnings
-		return 1
+		cid_4=$(uqmi -s -d "$device" --get-client-id wds)
+		uqmi -s -d "$device" --set-client-id wds,"$cid_4" --set-ip-family ipv4
+		pdh_4=$(uqmi -s -d "$device" --set-client-id wds,"$cid_4" \
+						--start-network \
+						--profile $default_profile)
+		if ! [ "$pdh_4" -eq "$pdh_4" ] 2> /dev/null
+		then
+			echo Can´t connect with ipv4, check APN settnings
+			proto_notify_error "$interface" IPV4_APN_ERROR
+			proto_block_restart "$interface"
+			return 1
+		fi
+		else
+			echo Default profile connected with ipv4
+		fi
+	elif [ $pdptype_def = 'ipv6' ]
+	then
+		cid_6=$(uqmi -s -d "$device" --get-client-id wds)
+		uqmi -s -d "$device" --set-client-id wds,"$cid_6" --set-ip-family ipv6
+		pdh_6=$(uqmi -s -d "$device" --set-client-id wds,"$cid_6" \
+						--start-network \
+						--profile $default_profile)
+		if ! [ "$pdh_6" -eq "$pdh_6" ] 2> /dev/null
+		then
+			echo Can´t connect with ipv6, check APN settnings
+			proto_notify_error "$interface" IPV6_APN_ERROR
+			proto_block_restart "$interface"
+			return 1
+                else
+                        echo Default profile connected with ipv6
+		fi
+	fi
+	if [ $pdptype = 'ipv4v6' ]
+	then
+		cid_6=$(uqmi -s -d "$device" --get-client-id wds)
+		uqmi -s -d "$device" --set-client-id wds,"$cid_6" --set-ip-family ipv6
+		pdh_6=$(uqmi -s -d "$device" --set-client-id wds,"$cid_6" \
+						--start-network \
+						--profile $dualstack_profile)
+		if ! [ "$pdh_6" -eq "$pdh_6" ] 2> /dev/null
+		then
+			echo Can´t connect dual-stack profile with ipv6
+			pdh_6=''
+                else
+                        echo Dual-stack profile connected with ipv6
+		fi
 	fi
 
 # Start interface
