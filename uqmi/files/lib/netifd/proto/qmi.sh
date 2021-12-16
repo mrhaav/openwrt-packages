@@ -261,7 +261,6 @@ proto_qmi_setup() {
 			proto_notify_error "$interface" IPV4_APN_ERROR
 			proto_block_restart "$interface"
 			return 1
-		fi
 		else
 			echo Default profile connected with ipv4
 		fi
