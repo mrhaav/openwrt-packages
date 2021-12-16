@@ -31,6 +31,7 @@ Files "Realtek_" are the original files from the driver package, https://www.rea
 
 Control utility for mobile broadband modems. Based on https://git.openwrt.org/project/uqmi.git 2021-11-22.
 
+PKG_RELEASE:=0.2 PKG_VERSION:=2021-12-15
 - qmi.sh: Support for dual-stack. PDP Type = IPv4/IPv6 will use IPv4 for default connection and IPv6 for secocondary connection.
 
 - wds: Added command: --create-profile
