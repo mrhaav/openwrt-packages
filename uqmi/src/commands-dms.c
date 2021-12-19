@@ -27,6 +27,17 @@ static struct {
 	char* puk;
 } dms_req_data;
 
+static const char *oper_modes[] = {
+        [QMI_DMS_OPERATING_MODE_ONLINE] = "online",
+        [QMI_DMS_OPERATING_MODE_LOW_POWER] = "low_power",
+        [QMI_DMS_OPERATING_MODE_FACTORY_TEST] = "factory_test",
+        [QMI_DMS_OPERATING_MODE_OFFLINE] = "offline",
+        [QMI_DMS_OPERATING_MODE_RESET] = "reset",
+        [QMI_DMS_OPERATING_MODE_SHUTTING_DOWN] = "shutting_down",
+        [QMI_DMS_OPERATING_MODE_PERSISTENT_LOW_POWER] = "persistent_low_power",
+        [QMI_DMS_OPERATING_MODE_MODE_ONLY_LOW_POWER] = "mode_only_low_power",
+};
+
 static void cmd_dms_get_capabilities_cb(struct qmi_dev *qmi, struct qmi_request *req, struct qmi_msg *msg)
 {
 	void *t, *networks;
@@ -380,24 +391,12 @@ cmd_dms_get_operating_mode_cb(struct qmi_dev *qmi, struct qmi_request *req, stru
 {
 	struct qmi_dms_get_operating_mode_response res;
 
-	const char *modes[] = {
-		[QMI_DMS_OPERATING_MODE_ONLINE] = "online",
-		[QMI_DMS_OPERATING_MODE_LOW_POWER] = "low_power",
-		[QMI_DMS_OPERATING_MODE_FACTORY_TEST] = "factory_test",
-		[QMI_DMS_OPERATING_MODE_OFFLINE] = "offline",
-		[QMI_DMS_OPERATING_MODE_RESET] = "reset",
-		[QMI_DMS_OPERATING_MODE_SHUTTING_DOWN] = "shutting_down",
-		[QMI_DMS_OPERATING_MODE_PERSISTENT_LOW_POWER] = "persistent_low_power",
-		[QMI_DMS_OPERATING_MODE_MODE_ONLY_LOW_POWER] = "mode_only_low_power",
-	};
-	int s = 0;
-
 	qmi_parse_dms_get_operating_mode_response(msg, &res);
-	if (res.set.mode &&
-	    res.data.mode < ARRAY_SIZE(modes))
-		s = res.data.mode;
+        const char *op_mode = "Unknown";
+        if (res.data.mode < ARRAY_SIZE(oper_modes) && oper_modes[res.data.mode])
+                op_mode = oper_modes[res.data.mode];
 
-	blobmsg_add_string(&status, NULL, modes[s]);
+	blobmsg_add_string(&status, NULL, op_mode);
 }
 
 static enum qmi_cmd_result
@@ -411,26 +410,16 @@ cmd_dms_get_operating_mode_prepare(struct qmi_dev *qmi, struct qmi_request *req,
 static enum qmi_cmd_result
 cmd_dms_set_operating_mode_prepare(struct qmi_dev *qmi, struct qmi_request *req, struct qmi_msg *msg, char *arg)
 {
-	static const char *modes[] = {
-		[QMI_DMS_OPERATING_MODE_ONLINE] = "online",
-		[QMI_DMS_OPERATING_MODE_LOW_POWER] = "low_power",
-		[QMI_DMS_OPERATING_MODE_FACTORY_TEST] = "factory_test",
-		[QMI_DMS_OPERATING_MODE_OFFLINE] = "offline",
-		[QMI_DMS_OPERATING_MODE_RESET] = "reset",
-		[QMI_DMS_OPERATING_MODE_SHUTTING_DOWN] = "shutting_down",
-		[QMI_DMS_OPERATING_MODE_PERSISTENT_LOW_POWER] = "persistent_low_power",
-		[QMI_DMS_OPERATING_MODE_MODE_ONLY_LOW_POWER] = "mode_only_low_power",
-	};
 	static struct qmi_dms_set_operating_mode_request sreq = {
 		QMI_INIT(mode, QMI_DMS_OPERATING_MODE_ONLINE),
 	};
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(modes); i++) {
-		if (!modes[i])
+	for (i = 0; i < ARRAY_SIZE(oper_modes); i++) {
+		if (!oper_modes[i])
 			continue;
 
-		if (strcmp(arg, modes[i]) != 0)
+		if (strcmp(arg, oper_modes[i]) != 0)
 			continue;
 
 		sreq.data.mode = i;
