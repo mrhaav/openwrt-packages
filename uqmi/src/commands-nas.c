@@ -217,6 +217,20 @@ cmd_nas_set_mnc_prepare(struct qmi_dev *qmi, struct qmi_request *req, struct qmi
 		return QMI_CMD_EXIT;
 	}
 
+	int mnc_length = strlen(arg);
+	if (mnc_length == 2) {
+                sel_req.set.mnc_pcs_digit_include_status = 1;
+		sel_req.data.mnc_pcs_digit_include_status = 0;
+	}
+	else if (mnc_length == 3) {
+		sel_req.set.mnc_pcs_digit_include_status = 1;
+                sel_req.data.mnc_pcs_digit_include_status = 1;
+	}
+	else {
+		uqmi_add_error("Invalid lenght of MNC (2 or 3 digits)");
+		return QMI_CMD_EXIT;
+	}
+
 	sel_req.data.network_selection_preference.mnc = value;
 	plmn_code_flag.mnc_is_set = true;
 	return QMI_CMD_DONE;
@@ -937,12 +951,19 @@ cmd_nas_get_serving_system_cb(struct qmi_dev *qmi, struct qmi_request *req, stru
 		blobmsg_add_string(&status, "registration", reg_states[state]);
 	}
 	if (res.set.current_plmn) {
+                if (res.data.current_plmn.description)
+                        blobmsg_add_string(&status, "plmn_description", res.data.current_plmn.description);
 		blobmsg_add_u32(&status, "plmn_mcc", res.data.current_plmn.mcc);
 		blobmsg_add_u32(&status, "plmn_mnc", res.data.current_plmn.mnc);
-		if (res.data.current_plmn.description)
-			blobmsg_add_string(&status, "plmn_description", res.data.current_plmn.description);
 	}
-
+	if (res.set.mnc_pcs_digit_include_status) {
+		if (res.data.mnc_pcs_digit_include_status.includes_pcs_digit) {
+			blobmsg_add_u32(&status, "mnc_length", 3);
+		}
+		else {
+			blobmsg_add_u32(&status, "mnc_length", 2);
+		}
+	}
 	if (res.set.roaming_indicator)
 		blobmsg_add_u8(&status, "roaming", !res.data.roaming_indicator);
 
@@ -975,6 +996,12 @@ cmd_nas_get_plmn_cb(struct qmi_dev *qmi, struct qmi_request *req, struct qmi_msg
 	if (res.set.manual_network_selection) {
 		blobmsg_add_u32(&status, "mcc", res.data.manual_network_selection.mcc);
 		blobmsg_add_u32(&status, "mnc", res.data.manual_network_selection.mnc);
+		if (res.data.manual_network_selection.includes_pcs_digit) {
+			blobmsg_add_u32(&status, "mnc_length", 3);
+		}
+		else {
+			blobmsg_add_u32(&status, "mnc_length", 2);
+		}
 	}
 
 	blobmsg_close_table(&status, c);
@@ -1021,10 +1048,25 @@ cmd_nas_network_scan_cb(struct qmi_dev *qmi, struct qmi_request *req, struct qmi
 	c = blobmsg_open_array(&status, "network_info");
 	for (i = 0; i < res.data.network_information_n; i++) {
 		info = blobmsg_open_table(&status, NULL);
+                if (res.data.network_information[i].description)
+                        blobmsg_add_string(&status, "description", res.data.network_information[i].description);
 		blobmsg_add_u32(&status, "mcc", res.data.network_information[i].mcc);
 		blobmsg_add_u32(&status, "mnc", res.data.network_information[i].mnc);
-		if (res.data.network_information[i].description)
-			blobmsg_add_string(&status, "description", res.data.network_information[i].description);
+		if (res.data.mnc_pcs_digit_include_status[i].mnc) {
+			if (res.data.mnc_pcs_digit_include_status[i].includes_pcs_digit) {
+				blobmsg_add_u32(&status, "mnc_length", 3);
+			}
+			else {
+				blobmsg_add_u32(&status, "mnc_length", 2);
+			}
+		}
+
+		const char *r = "unknown";
+		int r_i = res.data.radio_access_technology[i].radio_interface;
+		if (r_i >= 0 && r_i < ARRAY_SIZE(radio))
+			r = radio[r_i];
+		blobmsg_add_string(&status, "radio", r);
+
 		stat = blobmsg_open_array(&status, "status");
 		for (j = 0; j < ARRAY_SIZE(network_status); j++) {
 			if (!(res.data.network_information[i].network_status & (1 << j)))
@@ -1036,23 +1078,6 @@ cmd_nas_network_scan_cb(struct qmi_dev *qmi, struct qmi_request *req, struct qmi
 		blobmsg_close_table(&status, info);
 	}
 	blobmsg_close_array(&status, c);
-
-	c = blobmsg_open_array(&status, "radio_access_technology");
-	for (i = 0; i < res.data.radio_access_technology_n; i++) {
-		const char *r = "unknown";
-		int r_i = res.data.radio_access_technology[i].radio_interface;
-
-		info = blobmsg_open_table(&status, NULL);
-		blobmsg_add_u32(&status, "mcc", res.data.radio_access_technology[i].mcc);
-		blobmsg_add_u32(&status, "mnc", res.data.radio_access_technology[i].mnc);
-		if (r_i >= 0 && r_i < ARRAY_SIZE(radio))
-			r = radio[r_i];
-
-		blobmsg_add_string(&status, "radio", r);
-		blobmsg_close_table(&status, info);
-	}
-	blobmsg_close_array(&status, c);
-
 	blobmsg_close_table(&status, t);
 }
 
