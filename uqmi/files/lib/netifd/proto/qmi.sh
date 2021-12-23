@@ -106,15 +106,28 @@ proto_qmi_setup() {
 	fi
 
 # Check data format
-	raw_ip=$(cat /sys/class/net/wwan0/qmi/raw_ip)
-	uqmi -d "$device"  --wda-set-data-format 802.3
+	uqmi -d "$device"  --wda-set-data-format 802.3 > /dev/null 2>&1
 	data_format=$(uqmi -d "$device" --wda-get-data-format)
 	if [ $data_format = '"raw-ip"' ]
 	then
-		echo Data foramt set to raw-ip
-		[ $raw_ip = 'N' ] && echo "Y" > /sys/class/net/wwan0/qmi/raw_ip
+		if [ -f /sys/class/net/$ifname/qmi/raw_ip ]
+		then
+			echo Data format set to raw-ip
+			echo "Y" > /sys/class/net/$ifname/qmi/raw_ip
+		else
+			echo "Device only supports raw-ip mode but missing required attribute: /sys/class/net/$ifname/qmi/raw_ip"
+			proto_notify_error "$interface" DATA_FORMAT_ERROR
+			proto_block_restart "$interface"
+			return 1
+		fi
+	elif [ $data_format = '"802.3"' ]
+	then
+		echo Data format set to 802.3
 	else
-		echo Data foramt set to 802.3
+		echo Data format failure: $data_format
+		proto_notify_error "$interface" DATA_FORMAT_FAILURE
+		proto_block_restart "$interface"
+		return 1
 	fi
 
 # Check default APN profile
