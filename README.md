@@ -44,7 +44,7 @@ PKG_VERSION:=2021-12-15
 - dms: Added command: --get-device-operating-mode
 
 
-Compiling:
+Compiling\
 If you don´t find uqmi with desciption: `Control utility for mobile broadband modems, mod by mrhaav` in `make menuconfig` you need to "override" official uqmi.\
 `scripts/feeds uninstall uqmi`\
 `scripts/feeds install -p mrhaav uqmi`
