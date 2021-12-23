@@ -34,9 +34,9 @@ Files "Realtek_" are the original files from the driver package, https://www.rea
 
 Control utility for mobile broadband modems. Based on https://git.openwrt.org/project/uqmi.git 2021-11-22.
 
-PKG_RELEASE:=0.2\
-PKG_VERSION:=2021-12-15
-- qmi.sh: Support for dual-stack. PDP Type = IPv4/IPv6 will use IPv4 for default connection and IPv6 for secocondary connection. PLMN configuration not supported and PIN code must be de-activated.
+PKG_RELEASE:=0.1\
+PKG_VERSION:=2021-12-22
+- qmi.sh: Support for dual-stack. PDP Type = IPv4/IPv6 will use IPv4 for default connection and IPv6 for secondary connection. PLMN configuration not supported and PIN code must be de-activated.
 
 - wds: Added command: --create-profile
 - nas: Add decoding of lte_system_info_v2.cid and intrafrequency_lte_info_v2.global_cell_id to enodeb_id and cell_id and decoding of wcdma_system_info_v2.cid to rnc_id and cell_id. Change order to mcc-mnc-tac/lac-enodeb_id/rnc_id-cell_id.
