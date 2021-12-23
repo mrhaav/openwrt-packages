@@ -46,5 +46,5 @@ PKG_VERSION:=2021-12-15
 
 Compiling:
 If you don´t find uqmi with desciption: `Control utility for mobile broadband modems, mod by mrhaav` in `make menuconfig` you need to "override" official uqmi.
-```scripts/feeds uninstall uqmi
-scripts/feeds install -p mrhaav uqmi```
+`scripts/feeds uninstall uqmi\
+scripts/feeds install -p mrhaav uqmi`
