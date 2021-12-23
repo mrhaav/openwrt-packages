@@ -1,5 +1,8 @@
 # openwrt-packages
 
+Add feed to feeds.conf.default:
+`src-git mrhaav https://github.com/mrhaav/openwrt-packages.git`
+
 \
 **apu1-leds_buttom**
 
@@ -39,3 +42,9 @@ PKG_VERSION:=2021-12-15
 - nas: Add decoding of lte_system_info_v2.cid and intrafrequency_lte_info_v2.global_cell_id to enodeb_id and cell_id and decoding of wcdma_system_info_v2.cid to rnc_id and cell_id. Change order to mcc-mnc-tac/lac-enodeb_id/rnc_id-cell_id.
 - wds: Added command: --get-default-profile-number, --get-profile-settings, --modify-profile
 - dms: Added command: --get-device-operating-mode
+
+
+Compiling:
+If you don´t find uqmi with desciption: `Control utility for mobile broadband modems, mod by mrhaav` in `make menuconfig` you need to "override" official uqmi.
+```scripts/feeds uninstall uqmi
+scripts/feeds install -p mrhaav uqmi```
