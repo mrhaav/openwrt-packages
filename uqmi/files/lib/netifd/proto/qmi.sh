@@ -96,19 +96,52 @@ proto_qmi_setup() {
 	else
 		json_load $pin_status
 		json_get_var pin1_status pin1_status
-		if [ $pin1_status != "disabled" ]
-		then
-			echo De-activate the PINcode
-			proto_notify_error "$interface" PIN_NOT_DE-ACTIVATED
-			proto_block_restart "$interface"
-			return 1
-		fi
+                case $pin1_status in
+                        disabled)
+                                echo "PINcode disabled"
+                                ;;
+                        blocked)
+                                echo "SIM locked PUK required"
+                                proto_notify_error "$interface" PUK_NEEDED
+                                proto_block_restart "$interface"
+                                return 1
+                                ;;
+                        not_verified)
+                                if [ -n "$pincode" ]
+                                then
+                                        pin_verified=$(uqmi -s -d "$device" --uim-verify-pin1 "$pincode")
+                                        if [ -n "$pin_verified" ]
+                                        then
+                                                echo "Unable to verify PIN. $pin_verified"
+                                                proto_notify_error "$interface" PIN_FAILED
+                                                proto_block_restart "$interface"
+                                                return 1
+                                        else
+                                                echo "PINcode verified"
+                                        fi
+                                else
+                                        echo "PIN not specified but required"
+                                        proto_notify_error "$interface" PIN_NOT_SPECIFIED
+                                        proto_block_restart "$interface"
+                                        return 1
+                                fi
+                                ;;
+                        verified)
+                                echo "PIN already verified"
+                                ;;
+                        *)
+                                echo "PIN status failed: $pin1_status"
+                                proto_notify_error "$interface" PIN_STATUS_FAILED
+                                proto_block_restart "$interface"
+                                return 1
+                                ;;
+                esac
 	fi
 
 # Check data format
 	uqmi -d "$device"  --wda-set-data-format 802.3 > /dev/null 2>&1
 	data_format=$(uqmi -d "$device" --wda-get-data-format)
-	if [ $data_format = '"raw-ip"' ]
+	if [ "$data_format" = '"raw-ip"' ]
 	then
 		if [ -f /sys/class/net/$ifname/qmi/raw_ip ]
 		then
@@ -120,7 +153,7 @@ proto_qmi_setup() {
 			proto_block_restart "$interface"
 			return 1
 		fi
-	elif [ $data_format = '"802.3"' ]
+	elif [ "$data_format" = '"802.3"' ]
 	then
 		echo Data format set to 802.3
 	else
@@ -131,9 +164,9 @@ proto_qmi_setup() {
 	fi
 
 # Check default APN profile
-	if [ -z $pdptype ] || [ -z $auth ]
+	if [ -z "$pdptype" ] || [ -z "$auth" ]
 	then
-		echo Check pdptype and auth settings
+		echo "Check pdptype and auth settings"
 		proto_notify_error "$interface" PDP-TYPE_OR_AUTH_MISSING
 		proto_block_restart "$interface"
 		return 1
@@ -161,14 +194,14 @@ proto_qmi_setup() {
 	if [ $update_default_apn = true ]
 	then
 		op_mode=$(uqmi -d "$device" --get-device-operating-mode)
-		if [ $op_mode = '"online"' ]
+		if [ "$op_mode" = '"online"' ]
 		then
 			echo Initiate flight mode
 			uqmi -d "$device" --set-device-operating-mode low_power
 			sleep 1
 			json_load "$(uqmi -s -d "$device" --get-serving-system)"
 			json_get_var registration registration
-			while [ $registration = registered ]
+			while [ "$registration" = registered ]
 			do
 				sleep 2
 				json_load "$(uqmi -s -d "$device" --get-serving-system)"
@@ -251,13 +284,13 @@ proto_qmi_setup() {
 	json_get_var radio_type type
 	if [ $x -eq 3 ]
 	then
-		echo Can´t register to $operator on $radio_type
-		echo Check subscription or APN settings
+		echo "Unable to register to $operator on $radio_type"
+		echo "Check subscription or APN settings"
 		proto_notify_error "$interface" REGISTRATION_FAILED
 		proto_block_restart "$interface"
 		return 1
 	fi
-	echo Registered to $operator on $radio_type
+	echo "Registered to $operator on $radio_type"
 	sleep 1
 
 # Start network interface
@@ -270,12 +303,12 @@ proto_qmi_setup() {
 						--profile $default_profile)
 		if ! [ "$pdh_4" -eq "$pdh_4" ] 2> /dev/null
 		then
-			echo Can´t connect with ipv4, check APN settnings
+			echo "Unable to connect with ipv4, check APN settnings"
 			proto_notify_error "$interface" IPV4_APN_ERROR
 			proto_block_restart "$interface"
 			return 1
 		else
-			echo Default profile connected with ipv4
+			echo "Default profile connected with ipv4"
 		fi
 	elif [ $pdptype_def = 'ipv6' ]
 	then
@@ -286,12 +319,12 @@ proto_qmi_setup() {
 						--profile $default_profile)
 		if ! [ "$pdh_6" -eq "$pdh_6" ] 2> /dev/null
 		then
-			echo Can´t connect with ipv6, check APN settnings
+			echo "Unable to connect with ipv6, check APN settnings"
 			proto_notify_error "$interface" IPV6_APN_ERROR
 			proto_block_restart "$interface"
 			return 1
                 else
-                        echo Default profile connected with ipv6
+                        echo "Default profile connected with ipv6"
 		fi
 	fi
 	if [ $pdptype = 'ipv4v6' ]
@@ -303,10 +336,10 @@ proto_qmi_setup() {
 						--profile $dualstack_profile)
 		if ! [ "$pdh_6" -eq "$pdh_6" ] 2> /dev/null
 		then
-			echo Can´t connect dual-stack profile with ipv6
+			echo "Unable to connect ipv6 dual-stack profile"
 			pdh_6=''
                 else
-                        echo Dual-stack profile connected with ipv6
+                        echo "Dual-stack ipv6 profile connected"
 		fi
 	fi
 
