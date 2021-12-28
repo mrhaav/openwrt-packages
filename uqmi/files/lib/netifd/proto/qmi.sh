@@ -85,7 +85,7 @@ proto_qmi_setup() {
 	pin_status=$(uqmi -s -d "$device" --uim-get-sim-state -t 2000 2>&1)
 	while [ ${pin_status:0:1} = 'R' ]
 	do
-		echo Wait for modem to initiate
+		echo "Waiting for modem to initiate"
 		sleep 2
 		pin_status=$(uqmi -s -d "$device" --uim-get-sim-state -t 2000 2>&1)
 	done
@@ -120,7 +120,7 @@ proto_qmi_setup() {
                                                 echo "PINcode verified"
                                         fi
                                 else
-                                        echo "PIN not specified but required"
+                                        echo "PINcode required but not specified"
                                         proto_notify_error "$interface" PIN_NOT_SPECIFIED
                                         proto_block_restart "$interface"
                                         return 1
@@ -196,7 +196,7 @@ proto_qmi_setup() {
 		op_mode=$(uqmi -d "$device" --get-device-operating-mode)
 		if [ "$op_mode" = '"online"' ]
 		then
-			echo Initiate flight mode
+			echo "Initiate airplane mode"
 			uqmi -d "$device" --set-device-operating-mode low_power
 			sleep 1
 			json_load "$(uqmi -s -d "$device" --get-serving-system)"
@@ -225,7 +225,7 @@ proto_qmi_setup() {
 # Configure profile for dual-stack
 	if [ $pdptype = 'ipv4v6' ]
 	then
-		echo Configure profile for dual-stack
+		echo "Configure profile for dual-stack"
 		dualstack_profile=$((default_profile+1))
 		pdptype_ds='ipv6'
 		modify_ds=$(uqmi -d "$device" --modify-profile 3gpp,$dualstack_profile \
@@ -244,36 +244,132 @@ proto_qmi_setup() {
 						--auth "$auth" 2>&1)
 			if [ ${create_ds:0:1} != '{' ]
 			then
-				echo Can´t create profile for dual-stack
+				echo "Unable to create profile for dual-stack"
 				pdptype='ipv4'
 			else
 				json_load $create_ds
 				json_get_var dualstack_profile created-profile
 			fi
 		fi
-		echo Dual-stack profile number: $dualstack_profile
+		echo "Dual-stack profile number: $dualstack_profile"
 	fi
 
+# Check airplane mode
 	op_mode=$(uqmi -d "$device" --get-device-operating-mode)
 	if [ $op_mode != '"online"' ]
 	then
-		echo Flight mode off
+		echo "Airplame mode off"
 		uqmi -d "$device" --set-device-operating-mode online
 		sleep 1
 	fi
 
+# Check PLMN settings
+	json_load "$(uqmi -s -d "$device" --get-plmn)"
+	json_get_var plmn_mode mode
+	if [ -z "$plmn" ] || [ "$plmn" = "0" ]
+	then
+		if [ $plmn_mode = automatic ]
+		then
+			mcc=""
+			mnc=""
+		else
+			mcc="0"
+			mnc="00"
+			been_searching=false
+		fi
+	else
+		mcc=${plmn:0:3}
+		mnc=${plmn:3}
+	fi
+	plmn_mode=no_change
+	if [ -n "$mcc" -a -n "$mnc" ]
+	then
+		set_plmn=$(uqmi -s -d "$device" --set-plmn --mcc $mcc --mnc $mnc 2>&1)
+		if [ ! -z "$set_plmn" ]
+		then
+			echo "Unable to set PLMN, $set_plmn"
+			proto_notify_error "$interface" PLMN_FAILED
+			proto_block_restart "$interface"
+			return 1
+		fi
+		json_load "$(uqmi -s -d "$device" --get-plmn)"
+		json_get_var plmn_mode mode
+		if [ $plmn_mode = automatic ]
+		then
+			echo "PLMN set to automatic"
+			uqmi -d "$device" --network-register
+		else
+			json_get_var mcc mcc
+			json_get_var mnc mnc
+			json_get_var mnc_length mnc_length
+			full_mnc=00$mnc
+			if [ $mnc_length = 2 ]
+			then
+				full_mnc=${full_mnc: -2}
+			else
+				full_mnc=${full_mnc: -3}
+			fi
+		echo "PLMN set to mcc: $mcc mnc: $full_mnc"
+		fi
+	fi
+
 # Check registered network and used radio technology
-	json_load "$(uqmi -s -d "$device" --get-serving-system)"
-	json_get_var registration registration
-	json_get_var operator plmn_description
-	while [ $registration != registered ] && [ $x -lt 3 ]
+	first_registration=true
+	wait_for_registration=true
+	while [ "$wait_for_registration" = true ] && [ $x -lt 20 ]
 	do
-		sleep 2
+		[ $first_registration = false ] && sleep 3
 		x=$((x+1))
 		json_load "$(uqmi -s -d "$device" --get-serving-system)"
 		json_get_var registration registration
 		json_get_var operator plmn_description
+		json_get_var plmn_mcc plmn_mcc
+		json_get_var plmn_mnc plmn_mnc
+		json_get_var plmn_mnc_length mnc_length
+		case $registration in
+			registered)
+				wait_for_registration=false
+				if [ "$plmn_mode" = manual ]
+					then
+					[ "$plmn_mcc" != "$mcc" ] && wait_for_registration=true
+					[ "$plmn_mnc" != "$mnc" ] && wait_for_registration=true
+					[ "$plmn_mnc_length" != "$mnc_length" ] && wait_for_registration=true
+				elif [ "$plmn_mode" = automatic ]
+				then
+					[ $been_searching = false ] && wait_for_registration=true
+				fi
+				;;
+			searching)
+				wait_for_registration=true
+				been_searching=true
+				;;
+			registering_denied)
+				wait_for_registration=false
+				if [ "$plmn_mode" = manual ]
+				then
+						[ "$plmn_mcc" != "$mcc" ] && wait_for_registration=true
+						[ "$plmn_mnc" != "$mnc" ] && wait_for_registration=true
+						[ "$plmn_mnc_length" != "$mnc_length" ] && wait_for_registration=true
+				elif [ "$plmn_mode" = automatic ]
+				then
+						[ $been_searching = false ] && wait_for_registration=true
+				fi
+				;;
+			*)
+				wait_for_registration=true
+				;;
+		esac
+		if [ -n "$plmn_mnc" ]
+		then
+			full_mnc=00$plmn_mnc
+			[ $plmn_mnc_length = 2 ] && full_mnc=${full_mnc: -2} || full_mnc=${full_mnc: -3}
+		else
+			full_mnc=""
+		fi
+		echo $registration on "$plmn_mcc""$full_mnc"
+		first_registration=false
 	done
+
 	signal_info=$(uqmi -s -d "$device" --get-signal-info)
 	while [ ${signal_info:0:1} != '{' ]
 	do
@@ -282,16 +378,24 @@ proto_qmi_setup() {
 	done
 	json_load $signal_info
 	json_get_var radio_type type
-	if [ $x -eq 3 ]
+	radio_type=$(echo "$radio_type" | awk '{print toupper($0)}')
+	if [ "$registration" != registered ]
 	then
+		if [ -z $operator ] 
+		then
+			full_mnc=00$plmn_mnc
+			[ $plmn_mnc_length = 2 ] && full_mnc=${full_mnc: -2} || full_mnc=${full_mnc: -3}
+			operator=${plmn_mcc}${full_mnc}
+		fi
 		echo "Unable to register to $operator on $radio_type"
 		echo "Check subscription or APN settings"
 		proto_notify_error "$interface" REGISTRATION_FAILED
 		proto_block_restart "$interface"
 		return 1
+	else
+		echo "Registered to $operator on $radio_type"
+		sleep 1
 	fi
-	echo "Registered to $operator on $radio_type"
-	sleep 1
 
 # Start network interface
 	if [ $pdptype_def = 'ipv4' ]
