@@ -1,0 +1,6 @@
+# Hotplug script for updating loopia dns via api
+# created by loopiaapi
+[ "${ACTION}" = "ifupdate" -a "${IFUPDATE_ADDRESSES}" = "1" -a "${IFUPDATE_ROUTES}" = "1" ] && {
+	ip_address=$(ubus call network.interface.${INTERFACE} status | jsonfilter -e '@["ipv4-address"][0].address')
+	loopiaapi ${INTERFACE} ${ip_address}
+}

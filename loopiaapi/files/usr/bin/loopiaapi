@@ -1,0 +1,208 @@
+#!/bin/sh
+# Loopia DNS API access
+# by mrhaav 2021-12-29
+#  $1 = interface  $2 = IPaddress
+#
+# uci show ddns
+# ddns.loopiaapi.username='username@loopiaapi'
+# ddns.loopiaapi.password='password'
+# ddns.loopiaapi.wan='your.domain.com'
+# ddns.loopiaapi.forced_update='30'
+#
+# Interface with ".", replace . with _
+#
+
+username=$(uci get ddns.loopiaapi.username 2>/dev/null)
+password=$(uci get ddns.loopiaapi.password 2>/dev/null)
+
+# Check username and password
+if [ -z "$username" ] || [ -z "$password" ]
+then
+	logger -t loopiaAPI -p 3 'Username or password missing'
+	return 1
+fi
+
+# Check interface
+interface=${1//./_}
+full_domain=$(uci get ddns.loopiaapi.${interface} 2>/dev/null)
+if [ -z "$full_domain" ]
+then
+	logger -t loopiaAPI -p 3 'Domain missing to interface: '$1
+	return 1
+fi
+
+# Check IPaddress
+if [ -z "$2" ]
+then
+        logger -t loopiaAPI -p 3 'IPaddress is missing to interface: '$1
+        return 1
+fi
+
+
+# Forced intervall, in days. 0 = turns off.
+forcedUpdate=$(uci get ddns.loopiaapi.forced_update 2>/dev/null)
+if [ -z "$forcedUpdate" ]
+then
+	forcedUpdateTime=0
+else
+	forcedUpdateTime=$(($forcedUpdate*86400))
+fi
+
+tempFolder=/var/loopia
+mkdir -p $tempFolder
+
+
+userID() {
+# Create user id part of xml file
+echo '  <params>' >> $tempFolder/$1
+echo '    <param>' >> $tempFolder/$1
+echo '      <value>'$username'</value>' >> $tempFolder/$1
+echo '    </param>' >> $tempFolder/$1
+echo '    <param>' >> $tempFolder/$1
+echo '      <value>'$password'</value>' >> $tempFolder/$1
+echo '    </param>' >> $tempFolder/$1
+echo '    <param>' >> $tempFolder/$1
+echo '      <value>'$domain'</value>' >> $tempFolder/$1
+echo '    </param>' >> $tempFolder/$1
+echo '    <param>' >> $tempFolder/$1
+echo '      <value>'$subdomain'</value>' >> $tempFolder/$1
+echo '    </param>' >> $tempFolder/$1
+
+}
+
+
+errorCheck() {
+errorCode=$(xmllint --xpath //value/array/data/value/struct $tempFolder/$1 2>&1)
+if [ "$errorCode" = 'XPath set is empty' ]
+then
+    errorCode=$(xmllint --xpath 'string(//value/array/data/value/string)' $tempFolder/$1)
+    case "$errorCode" in
+    "")
+        logger -t loopiaAPI -p 3 'Loopia response: Check sub domain name <'$subdomain'>' ;;
+    "AUTH_ERROR")
+        logger -t loopiaAPI -p 3 'Loopia response: Check username and password' ;;
+    "UNKNOWN_ERROR")
+        logger -t loopiaAPI -p 3 'Loopia response: Ckeck domain name <'$domain'>' ;;
+    *)
+        logger -t loopiaAPI -p 3 'Loopia response: '$errorCode. ;;
+    esac
+    echo nOK
+else
+    echo OK
+fi
+}
+
+
+checkDNS() {
+# Create xml file
+echo '<?xml version="1.0" encoding="UTF-8"?>' > $tempFolder/check_$subdomain.xml
+echo '<methodCall>' >> $tempFolder/check_$subdomain.xml
+echo '  <methodName>getZoneRecords</methodName>' >> $tempFolder/check_$subdomain.xml
+userID check_$subdomain.xml
+echo '  </params>' >> $tempFolder/check_$subdomain.xml
+echo '</methodCall>' >> $tempFolder/check_$subdomain.xml
+
+curl -d @$tempFolder/check_$subdomain.xml https://api.loopia.se/RPCSERV -s -o $tempFolder/status_$subdomain
+xmllint --format $tempFolder/status_$subdomain --output $tempFolder/status_$subdomain.xml
+
+errorStatus=$(errorCheck status_$subdomain.xml)
+echo $errorStatus
+}
+
+
+updateDNS() {
+local x=1
+
+echo '<?xml version="1.0" encoding="UTF-8"?>' > $tempFolder/update_$subdomain.xml
+echo '<methodCall>' >> $tempFolder/update_$subdomain.xml
+echo '  <methodName>updateZoneRecord</methodName>' >> $tempFolder/update_$subdomain.xml
+userID update_$subdomain.xml
+echo '    <param>' >> $tempFolder/update_$subdomain.xml
+
+Arecord=$(xmllint --xpath 'string(//data/value['$x']/struct/member[name="type"]/value/string)' $tempFolder/status_$subdomain.xml)
+while [ "$Arecord" != "A" ] && [ ! -z "$Arecord" ]
+do
+    let "x+=1"
+    Arecord=$(xmllint --xpath 'string(//data/value['$x']/struct/member[name="type"]/value/string)' $tempFolder/status_$subdomain.xml)
+done
+
+if [ "$Arecord" = "A" ]
+then
+    xmllint --xpath '//data/value['$x']/struct' $tempFolder/status_$subdomain.xml >> $tempFolder/update_$subdomain.xml
+
+    echo '    </param>' >> $tempFolder/update_$subdomain.xml
+    echo '  </params>' >> $tempFolder/update_$subdomain.xml
+    echo '</methodCall>' >> $tempFolder/update_$subdomain.xml
+
+    sed -i "s/$dnsIP/$newIP/" $tempFolder/update_$subdomain.xml
+
+    curl -d @$tempFolder/update_$subdomain.xml https://api.loopia.se/RPCSERV -s -o $tempFolder/up_stat_$subdomain.xml
+
+    xmllint --xpath 'string(//value/string)' $tempFolder/up_stat_$subdomain.xml
+else
+    logger -t loopiaAPI -p 3 No DNS A record found
+    echo noA
+fi
+}
+
+
+forcedUpdate() {
+
+lastDate=$(ls --full-time $tempFolder/$1 2>/dev/null)
+if [ ! -z "$lastDate" ]
+then
+    lastDate=${lastDate:44:19}
+    lastTime=$(date +%s -d "$lastDate")
+    nowTime=$(date +%s)
+    
+    timeToUpdate=$(($nowTime-$lastTime-$forcedUpdateTime))
+    if [ $timeToUpdate -lt 0 ] || [ $forcedUpdateTime -eq 0 ]
+    then
+        echo No
+    else
+        echo Yes
+    fi
+else
+    echo New
+fi
+}
+
+
+# main
+
+newIP=$2
+
+domain=$(echo $full_domain | awk -F . '{print $(NF-1)"."$NF}')
+subdomain=$(echo ${full_domain%.$domain})
+if [ $subdomain = $domain ]
+then
+    subdomain=@
+fi
+
+nsIP=$(nslookup $full_domain | grep 'Address 1:')
+nsIP=$(echo ${nsIP#'Address 1: '})
+
+checkForcedUpdate=$(forcedUpdate up_stat_$subdomain.xml)
+
+if [ $newIP != "$nsIP" ] || [ $checkForcedUpdate != 'No' ]
+then
+    checkStatus=$(checkDNS)
+    if [ $checkStatus = 'OK' ]
+    then
+        dnsIP=$(xmllint --xpath 'string(//struct/member[name="rdata"]/value/string)' $tempFolder/status_$subdomain.xml)
+        if [ $newIP != $dnsIP ] || [ $checkForcedUpdate != 'No' ]
+        then
+            updateStatus=$(updateDNS)
+            if [ $updateStatus != 'OK' ]
+            then
+                logger -t loopiaAPI -p 3 $1' DNS update went wrong:' $updateStatus
+            else
+                logger -t loopiaAPI $full_domain' update '$dnsIP' -> '$2 $updateStatus' Forced: '$checkForcedUpdate
+            fi
+        else
+            logger -t loopiaAPI $1' Sub DNS not updated yet '$newIP' != '$nsIP
+        fi
+    fi
+# else
+#    logger -t loopiaAPI $full_domain' is up to date'
+fi
