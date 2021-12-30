@@ -1,7 +1,9 @@
 # openwrt-packages
 
-Add feed to feeds.conf.default:
-`src-git mrhaav https://github.com/mrhaav/openwrt-packages.git`
+Add feed to feeds.conf.default:\
+`src-git mrhaav https://github.com/mrhaav/openwrt-packages.git`\
+`./scripts/feeds update -a`
+`./scripts/feeds install -a`
 
 \
 **apu1-leds_buttom**
@@ -33,7 +35,9 @@ Needed packages:\
 `curl`
 `libxml2-utils`
 
-libxml2-utils is missing in 19.07. You can download from 21.02 and install manually.\
+libxml2-utils is missing in 19.07. You can download from 21.02 and install manually or compile from here. "Override" 19.07 version with:\
+`scripts/feeds uninstall libxml2`\
+`scripts/feeds install -p mrhaav libxml2`\
 \
 \
 **r8168-8.048.03**
