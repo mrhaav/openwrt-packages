@@ -2,6 +2,7 @@
 
 Add feed to feeds.conf.default: `src-git mrhaav https://github.com/mrhaav/openwrt-packages.git`\
 \
+\
 **apu1-leds_buttom**
 
 Kernel module to access the three front LEDs and the push button on the PC Engines APU1.\
