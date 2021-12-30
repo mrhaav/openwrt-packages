@@ -29,7 +29,7 @@ As long as the DNS has correct information nothing is sent to Loopia. You can fo
 uci set ddns.loopiaapi.forced_update='30'
 uci commit ddns
 ```
-Needed packages:\
+Packages dependencies:\
 `curl`
 `libxml2-utils`
 
