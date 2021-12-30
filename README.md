@@ -1,10 +1,6 @@
 # openwrt-packages
 
-Add feed to feeds.conf.default:\
-`src-git mrhaav https://github.com/mrhaav/openwrt-packages.git`\
-`./scripts/feeds update -a`
-`./scripts/feeds install -a`
-
+Add feed to feeds.conf.default: `src-git mrhaav https://github.com/mrhaav/openwrt-packages.git`\
 \
 **apu1-leds_buttom**
 
