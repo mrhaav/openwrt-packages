@@ -14,16 +14,16 @@ You can use packages like `kmod-ledtrig-netdev` to trigger the LEDs for network 
 **LoopiaAPI**
 
 Hotplug script for updating Loopia DNS via LoopiaAPI, https://www.loopia.com/api/. \
-LoopiaAPI is triggered from etc/udhcpc.user and etc/hotplug.d/iface/90-loopia. udhcpc.user is triggered when the DHCP client is updating the IP-address and 90-loopia is triggered when an interface is updated with ip address and route. 90-loopia could be usefull for LTE modem when they doesn´t support DCHP.\
+LoopiaAPI is triggered from `etc/udhcpc.user` and `etc/hotplug.d/iface/90-loopia`. `udhcpc.user` is triggered when the DHCP client is updating the IP-address and `90-loopia` is triggered when an interface is updated with ip address and route. `90-loopia` could be usefull for LTE modem when they doesn´t support DCHP.\
 \
-You need to configure your Loopia API username and password and "connect" interface to your domain name.
+You need to configure your Loopia API username and password and "connect" the interface to your domain name.
 ```
 uci set ddns.loopiaapi.username='user§@loopiaapi'
 uci set ddns.loopiaapi.password='password'
 uci set ddns.loopiaapi.wan='your.domain.com'
 uci commit ddns
 ```
-
+\
 As long as the DNS has correct information nothing are sent to Loopia. You can force regulary updates, in days, with:
 ```
 uci set ddns.loopiaapi.forced_update='30'
@@ -33,7 +33,7 @@ Needed packages:\
 `curl`
 `libxml2-utils`
 
-libxml2-utils is missing in 19.07. You can download from 21.02 and install manually.
+libxml2-utils is missing in 19.07. You can download from 21.02 and install manually.\
 \
 \
 **r8168-8.048.03**
