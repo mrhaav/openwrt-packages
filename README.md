@@ -24,7 +24,7 @@ uci set ddns.loopiaapi.wan='your.domain.com'
 uci commit ddns
 ```
 \
-As long as the DNS has correct information nothing are sent to Loopia. You can force regulary updates, in days, with:
+As long as the DNS has correct information nothing is sent to Loopia. You can force regulary updates, in days, with:
 ```
 uci set ddns.loopiaapi.forced_update='30'
 uci commit ddns
