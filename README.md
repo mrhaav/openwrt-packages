@@ -18,7 +18,7 @@ LoopiaAPI is triggered from `etc/udhcpc.user` and `etc/hotplug.d/iface/90-loopia
 \
 You need to configure your Loopia API username and password and "connect" the interface to your domain name.
 ```
-uci set ddns.loopiaapi.username='user§@loopiaapi'
+uci set ddns.loopiaapi.username='user@loopiaapi'
 uci set ddns.loopiaapi.password='password'
 uci set ddns.loopiaapi.wan='your.domain.com'
 uci commit ddns
