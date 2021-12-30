@@ -16,10 +16,10 @@ Hotplug script for updating Loopia DNS via LoopiaAPI, https://www.loopia.com/api
 loopiaapi is triggered from etc/udhcpc.user and etc/hotplug.d/iface/90-loopia. udhcpc.user is triggered when the DHCP client is updating the IP-address and 90-loopia is triggered when an interface is updated with ip address and route. 90-loopia could be usefull for LTE modem when they doesn´t support DCHP.\
 \
 You need to configure your Loopia API username and password and "connect" interface to your domain name.
-```uci set ddns.loopiaapi.username='user§@loopiaapi'
+`uci set ddns.loopiaapi.username='user§@loopiaapi'
 uci set ddns.loopiaapi.password='password'
 uci set ddns.loopiaapi.wan='your.domain.com'
-uci commit ddns```
+uci commit ddns`
 
 As long as the DNS has correct information nothing are sent to Loopia. You can force regulary updates, in days, with:
 uci set ddns.loopiaapi.forced_update='30'
