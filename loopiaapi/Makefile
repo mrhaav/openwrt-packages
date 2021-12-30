@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
  
 PKG_NAME:=loopiaapi
 PKG_VERSION:=2021-12-29
-PKG_RELEASE:=0.6
+PKG_RELEASE:=0.8
 
 PKG_MAINTAINER:=Henrik Ginstmark <henrik@ginstmark.se>
 PKG_LICENSE:=GPL-2.0
@@ -16,7 +16,7 @@ define Package/loopiaapi
   TITLE:=Utility fot updating DNS via Loopia API
   SUBMENU:=IP Addresses and Names
   PKGARCH:=all
-  DEPENDS:=
+  DEPENDS:=+curl +libxml2-utils
 endef
 
 define Package/loopiaapi/description
