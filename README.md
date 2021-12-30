@@ -13,8 +13,8 @@ You can use packages like `kmod-ledtrig-netdev` to trigger the LEDs for network 
 \
 **LoopiaAPI**
 
-Hotplug script for updating Loopia DNS via LoopiaAPI, https://www.loopia.com/api/.\
-loopiaapi is triggered from etc/udhcpc.user and etc/hotplug.d/iface/90-loopia. udhcpc.user is triggered when the DHCP client is updating the IP-address and 90-loopia is triggered when an interface is updated with ip address and route. 90-loopia could be usefull for LTE modem when they doesn´t support DCHP.\
+Hotplug script for updating Loopia DNS via LoopiaAPI, https://www.loopia.com/api/. \
+LoopiaAPI is triggered from etc/udhcpc.user and etc/hotplug.d/iface/90-loopia. udhcpc.user is triggered when the DHCP client is updating the IP-address and 90-loopia is triggered when an interface is updated with ip address and route. 90-loopia could be usefull for LTE modem when they doesn´t support DCHP.\
 \
 You need to configure your Loopia API username and password and "connect" interface to your domain name.
 ```
@@ -29,7 +29,7 @@ As long as the DNS has correct information nothing are sent to Loopia. You can f
 uci set ddns.loopiaapi.forced_update='30'
 uci commit ddns
 ```
-Needed packages:
+Needed packages:\
 `curl`
 `libxml2-utils`
 
