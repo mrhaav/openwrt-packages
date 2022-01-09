@@ -3,7 +3,7 @@
 Add feed to feeds.conf.default: `src-git mrhaav https://github.com/mrhaav/openwrt-packages.git`\
 \
 \
-**apu1-leds_buttom**
+**leds-apu1**
 
 Kernel module to access the three front LEDs and the push button on the PC Engines APU1.\
 LEDs are called apu:1, apu:2 and apu:3. The push buttom is accessible via GPIO and `cat /sys/class/gpio/gpio187/value`. 1 = unpressed, 0 = pressed.\
@@ -38,7 +38,7 @@ libxml2-utils is missing in 19.07. You can download from 21.02 and install manua
 `scripts/feeds install -p mrhaav libxml2`\
 \
 \
-**r8168-8.048.03**
+**r8168**
 
 NIC drivers to Realtek RTL8111E with support for customized LEDs. Designed for PC Engines APU1.\
 The APU1 board has LED0 (green) and LED1 (amber) connected. Default flashes LED0 for network activity, for all speeds, and LED1 is lit for Link100M.
