@@ -9,6 +9,9 @@ include $(INCLUDE_DIR)/kernel.mk
 PKG_NAME:=leds-apu1
 PKG_RELEASE:=1
 
+PKG_MAINTAINER:=Henrik Ginstmark <henrik@ginstmark.se>
+PKG_LICENSE:=GPL-2.0
+
 include $(INCLUDE_DIR)/package.mk
 
 define KernelPackage/leds-apu1
@@ -33,7 +36,7 @@ EXTRA_CFLAGS:= \
 
 MAKE_OPTS:= \
 	$(KERNEL_MAKE_FLAGS) \
-	SUBDIRS="$(PKG_BUILD_DIR)" \
+	M="$(PKG_BUILD_DIR)" \
 	EXTRA_CFLAGS="$(EXTRA_CFLAGS)" \
 	$(EXTRA_KCONFIG)
 
