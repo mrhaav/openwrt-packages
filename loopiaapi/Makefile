@@ -13,7 +13,7 @@ include $(INCLUDE_DIR)/package.mk
 define Package/loopiaapi
   SECTION:=net
   CATEGORY:=Network
-  TITLE:=Utility fot updating DNS via Loopia API
+  TITLE:=Utility for updating DNS via Loopia API
   SUBMENU:=IP Addresses and Names
   PKGARCH:=all
   DEPENDS:=+curl +libxml2-utils
