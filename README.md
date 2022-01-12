@@ -60,7 +60,7 @@ Files "Realtek_" are the original files from the driver package, https://www.rea
 **uqmi**
 
 Control utility for mobile broadband modems. Based on https://git.openwrt.org/project/uqmi.git 2021-11-22.\
-This version use APN profiles. The default APN profile is verfified befor the modem goes online. If the default profile is not correct, the modem is set to Airplane mode on and the profile is corrected. Then the modem is set to Airplane mode off.\
+This version use APN profiles. The default APN profile is verfified before the modem goes online. If the default profile is not correct, the modem is set to Airplane mode on and the profile is corrected. Then the modem is set to Airplane mode off.\
 If PDP-type = IPv4v6, dual-stack will be activate. Default APN profile is defined with IPv4 and a secondary profile is defined with IPv6.\
 
 PKG_RELEASE:=0.3\
