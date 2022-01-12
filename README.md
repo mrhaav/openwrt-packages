@@ -45,7 +45,7 @@ AT command script for Huawei ME909s-120 LTE modem.
 You need to configure you wwan interface:\
 Network - Interfaces - wwan\
 Edit - Firewall Settings\
-     Create / Assign firewall-zone: Add wwan to correct firewall-zone
+&nbsp;&nbsp;&nbsp;Create / Assign firewall-zone: Add wwan to correct firewall-zone
 	
 Add APN setting:
 ```
