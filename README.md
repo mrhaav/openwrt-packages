@@ -49,8 +49,8 @@ Edit - Firewall Settings\
 	
 Add APN setting:
 ```
-uci set network.wwan.apn=internet`
-uci set network.wwan.pdp_type=IP`
+uci set network.wwan.apn=internet
+uci set network.wwan.pdp_type=IP
 uci commit network
 ```
 
