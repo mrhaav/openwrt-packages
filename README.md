@@ -39,14 +39,15 @@ libxml2-utils is missing in 19.07. You can download from 21.02 and install manua
 \
 \
 **me909s**
-AT command script for Huawei ME909s-120 LTE modem.\
+
+AT command script for Huawei ME909s-120 LTE modem.
 
 You need to configure you wwan interface:\
 Network - Interfaces - wwan\
 Edit - Firewall Settings\
-	Create / Assign firewall-zone: Add wwan to correct firewall-zone
+     Create / Assign firewall-zone: Add wwan to correct firewall-zone
 	
-Add APN setting:\
+Add APN setting:
 ```
 uci set network.wwan.apn=internet`
 uci set network.wwan.pdp_type=IP`
@@ -54,7 +55,7 @@ uci commit network
 ```
 
 The script will check connectivity (ping 8.8.8.8) every 600 sec, by default.\
-You can change the intervall with:\
+You can change the intervall with:
 ```
 uci set network.wwan.check_timer=xx
 uci commit network
@@ -64,7 +65,7 @@ Reboot router\
 Packages dependencies:\
 `kmod-usb-net-cdc-ether`
 `kmod-usb-serial-option`
-`comgt`
+`comgt`\
 \
 \
 **r8168**
