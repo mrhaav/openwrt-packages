@@ -48,7 +48,8 @@ Edit - Firewall Settings\
 &nbsp;&nbsp;&nbsp;Create / Assign firewall-zone: Add wwan to correct firewall-zone
 	
 Add APN setting:
-```uci set network.wwan.apn=internet
+```
+uci set network.wwan.apn=internet
 uci set network.wwan.pdp_type=IP
 uci commit network
 ```
