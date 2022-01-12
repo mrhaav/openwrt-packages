@@ -1,0 +1,14 @@
+#!/bin/sh /etc/rc.common
+# Start Huawei modem
+
+START=21
+STOP=01
+
+USE_PROCD=1
+
+start_service() {
+    procd_open_instance
+    procd_set_param command sh "/usr/bin/me909s.sh"
+    procd_set_param respawn ${respawn_threshold:-30} ${respawn_timeout:-10} ${respawn_retry:-2}
+    procd_close_instance
+}
