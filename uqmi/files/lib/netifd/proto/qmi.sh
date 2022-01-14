@@ -213,7 +213,7 @@ proto_qmi_setup() {
 		[ "$def_pdptype" != "$pdptype_def" ] && echo pdp-type: $def_pdptype to $pdptype_def
 		[ "$def_username" != "$username" ] && echo username: def_username to $username
 		[ "$def_password" != "$password" ] && echo password changed
-		[ "$def_auth" != "$auth" ]  && authentication: $def_auth to $auth
+		[ "$def_auth" != "$auth" ]  && echo authentication: $def_auth to $auth
 		uqmi -d "$device" --modify-profile 3gpp,$default_profile \
 			--apn "$apn" \
 			--pdp-type "$pdptype_def" \
