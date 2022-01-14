@@ -93,13 +93,17 @@ Control utility for mobile broadband modems. Based on https://git.openwrt.org/pr
 This version use APN profiles. The default APN profile is verfified before the modem goes online. If the default profile is not correct, the modem is set to Airplane mode on and the profile is corrected. Then the modem is set to Airplane mode off.\
 If PDP-type = IPv4v6, dual-stack will be activate. Default APN profile is defined with IPv4 and a secondary profile is defined with IPv6.
 
+PKG_RELEASE:=0.4\
+PKG_VERSION:=2021-12-22
+- qmi.sh: Some minor cosmetic corrections.
+
 PKG_RELEASE:=0.3\
 PKG_VERSION:=2021-12-22
 - qmi.sh: Added support for PLMN configuration and PIN code.
 
 PKG_RELEASE:=0.2\
 PKG_VERSION:=2021-12-22
-- qmi.sh: Support for dual-stack. PDP Type = IPv4/IPv6 will use IPv4 for default connection and IPv6 for secondary connection. PLMN configuration not supported.
+- qmi.sh: Support for dual-stack. PDP Type = IPv4v6 will use IPv4 for default connection and IPv6 for secondary connection. PLMN configuration not supported.
 
 - wds: Added command: --create-profile
 - nas: Add decoding of lte_system_info_v2.cid and intrafrequency_lte_info_v2.global_cell_id to enodeb_id and cell_id and decoding of wcdma_system_info_v2.cid to rnc_id and cell_id. Change order to mcc-mnc-tac/lac-enodeb_id/rnc_id-cell_id.
