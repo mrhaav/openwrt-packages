@@ -258,7 +258,7 @@ proto_qmi_setup() {
 	op_mode=$(uqmi -d "$device" --get-device-operating-mode)
 	if [ $op_mode != '"online"' ]
 	then
-		echo "Airplame mode off"
+		echo "Airplane mode off"
 		uqmi -d "$device" --set-device-operating-mode online
 		sleep 1
 	fi
