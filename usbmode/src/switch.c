@@ -520,8 +520,11 @@ void handle_switch(struct usbdev_data *data)
 
 		config_new = blobmsg_get_u32(tb[DATA_CONFIG]);
 		if (libusb_get_configuration(data->devh, &config) ||
-		    config != config_new)
+		    config != config_new) {
+			libusb_set_configuration(data->devh, 0);
+			usleep(100000);
 			libusb_set_configuration(data->devh, config_new);
+		}
 	}
 
 	if (tb[DATA_ALT]) {
