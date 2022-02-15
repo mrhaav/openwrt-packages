@@ -40,7 +40,7 @@ libxml2-utils is missing in 19.07. You can download from 21.02 and install manua
 \
 **luci - luci-proto-mbim**
 
-Just a copy of luci-proto-qmi.\
+Just a copy of luci-proto-qmi, but support for mbim protocol.\
 \
 \
 **me909s**
@@ -90,6 +90,12 @@ If you want a different behavior, just change the hex-word in file r8168_n.c und
 
 Files "Realtek_" are the original files from the driver package, https://www.realtek.com/en/component/zoo/category/network-interface-controllers-10-100-1000m-gigabit-ethernet-pci-express-software
 \
+\
+\
+**umbim**
+
+Control utility for mobile broadband modems. Based on https://git.openwrt.org/project/umbim.git 2021-08-18.\
+
 \
 \
 **uqmi**
