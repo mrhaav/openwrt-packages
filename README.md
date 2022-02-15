@@ -39,6 +39,7 @@ libxml2-utils is missing in 19.07. You can download from 21.02 and install manua
 \
 \
 **luci - luci-proto-umbim**
+
 Just a copy of luci-proto-uqmi.\
 \
 \
