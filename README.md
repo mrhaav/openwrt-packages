@@ -38,6 +38,10 @@ libxml2-utils is missing in 19.07. You can download from 21.02 and install manua
 `scripts/feeds install -p mrhaav libxml2`\
 \
 \
+**luci - luci-proto-umbim**
+Just a copy of luci-proto-uqmi.\
+\
+\
 **me909s**
 
 AT command script for Huawei ME909s-120 LTE modem.
