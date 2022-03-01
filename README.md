@@ -145,4 +145,6 @@ Now Huawei ME909s-120 can switch to MBIM protocol just add:
                         }
                 },
 ```
-to /etc/usb.mode.json
+to /etc/usb.mode.json\
+\
+Official usbmode is updated 2022-02-24 with this patch.
