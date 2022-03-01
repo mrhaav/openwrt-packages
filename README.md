@@ -128,7 +128,21 @@ Compiling:\
 If you don´t find uqmi with desciption: `Control utility for mobile broadband modems, mod by mrhaav` in `make menuconfig` you need to "override" official uqmi.\
 `scripts/feeds uninstall uqmi`\
 `scripts/feeds install -p mrhaav uqmi`
+
 \
 \
 **usbmode**
 
+USB mode switch utility based on https://git.openwrt.org/project/usbmode.git 2017-12-19.\
+Added config #0 and a 100milliseconds delay before switching to actual config.\
+Now Huawei ME909s-120 can switch to MBIM protocol just add:
+```
+                "12d1:15c1": {
+                        "*": {
+                                "msg": [  ],
+                                "mode": "Huawei",
+                                "config": 3
+                        }
+                },
+```
+to /etc/usb.mode.json
