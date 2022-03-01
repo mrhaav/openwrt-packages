@@ -49,6 +49,7 @@ AT command script for Huawei ME909s-120 LTE modem.
 
 You need to configure you wwan interface:\
 Network - Interfaces - wwan\
+&nbsp;&nbsp;&nbsp;Protocol: DHCP client\
 Edit - Firewall Settings\
 &nbsp;&nbsp;&nbsp;Create / Assign firewall-zone: Add wwan to correct firewall-zone
 	
@@ -94,7 +95,7 @@ Files "Realtek_" are the original files from the driver package, https://www.rea
 \
 **umbim**
 
-Control utility for mobile broadband modems. Based on https://git.openwrt.org/project/umbim.git 2021-08-18.\
+Control utility for mobile broadband modems. Based on https://git.openwrt.org/project/umbim.git 2021-08-18.
 
 \
 \
@@ -127,3 +128,7 @@ Compiling:\
 If you don´t find uqmi with desciption: `Control utility for mobile broadband modems, mod by mrhaav` in `make menuconfig` you need to "override" official uqmi.\
 `scripts/feeds uninstall uqmi`\
 `scripts/feeds install -p mrhaav uqmi`
+\
+\
+**usbmode**
+
