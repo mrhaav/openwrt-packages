@@ -117,9 +117,9 @@ PKG_RELEASE:=0.2\
 PKG_VERSION:=2021-12-22
 - qmi.sh: Support for dual-stack. PDP Type = IPv4v6 will use IPv4 for default connection and IPv6 for secondary connection. PLMN configuration not supported.
 
-- nas: Add support for three digit MNC even if the value is less then 100. MNC = 008 will be a three-digit and 08 will be a two-digit MNC.
+- nas: Added support for three digit MNC even if the value is less then 100. MNC = 008 will be a three-digit and 08 will be a two-digit MNC.
 - wds: Added command: --create-profile
-- nas: Add decoding of lte_system_info_v2.cid and intrafrequency_lte_info_v2.global_cell_id to enodeb_id and cell_id and decoding of wcdma_system_info_v2.cid to rnc_id and cell_id. Change order to mcc-mnc-tac/lac-enodeb_id/rnc_id-cell_id.
+- nas: Added decoding of lte_system_info_v2.cid and intrafrequency_lte_info_v2.global_cell_id to enodeb_id and cell_id and decoding of wcdma_system_info_v2.cid to rnc_id and cell_id. Change order to mcc-mnc-tac/lac-enodeb_id/rnc_id-cell_id.
 - wds: Added command: --get-default-profile-number, --get-profile-settings, --modify-profile
 - dms: Added command: --get-device-operating-mode
 
@@ -135,7 +135,7 @@ If you don´t find uqmi with desciption: `Control utility for mobile broadband m
 
 USB mode switch utility based on https://git.openwrt.org/project/usbmode.git 2017-12-19.\
 Added config #0 and a 100milliseconds delay before switching to actual config.\
-Now Huawei ME909s-120 can switch to MBIM protocol just add:
+Now Huawei ME909s-120 can switch to MBIM protocol, just add:
 ```
                 "12d1:15c1": {
                         "*": {
