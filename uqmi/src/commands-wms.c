@@ -222,8 +222,8 @@ static int decode_udh(const unsigned char *data)
 static void decode_7bit_field(char *name, const unsigned char *data, int data_len, int bit_offset)
 {
 	char *dest = blobmsg_alloc_string_buffer(&status, name, 3 * data_len + 2);
-	pdu_decode_7bit_str(dest, data, CEILDIV(data_len * 7, 8), bit_offset);
-	dest[data_len] = 0;
+	int out_len = pdu_decode_7bit_str(dest, data, CEILDIV(data_len * 7, 8), bit_offset);
+	dest[out_len] = 0;
 	blobmsg_add_string_buffer(&status);
 }
 
