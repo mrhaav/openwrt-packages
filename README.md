@@ -129,7 +129,7 @@ PKG_VERSION:=2021-12-22
 - wds: Added command: --create-profile
 - nas: Added decoding of lte_system_info_v2.cid and intrafrequency_lte_info_v2.global_cell_id to enodeb_id and cell_id and decoding of wcdma_system_info_v2.cid to rnc_id and cell_id. Change order to mcc-mnc-tac/lac-enodeb_id/rnc_id-cell_id.
 - wds: Added command: --get-default-profile-number, --get-profile-settings, --modify-profile
-- dms: Added command: --get-device-operating-mode
+- dms: Added command: --get-device-operating-mode *Included in uqmi.git 2022-02-22*
 
 
 Compiling:\
