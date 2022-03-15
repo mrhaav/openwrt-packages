@@ -106,6 +106,14 @@ This version use APN profiles. The default APN profile is verified before the mo
 If PDP-type = IPv4v6, dual-stack will be activate. Default APN profile is defined with IPv4 and a secondary profile is defined with IPv6.
 
 PKG_RELEASE:=0.4\
+PKG_VERSION:=2022-03-15
+- wms: Added --storage argument for reading SMS from me, not only from sim.
+
+PKG_RELEASE:=0.4\
+PKG_VERSION:=2022-03-12
+- wms: corrected too short received SMS. When characters with ascii values bigger than 0x7f are used, the length of the received text message is too short. *Included in uqmi.git 2022-03-12*
+
+PKG_RELEASE:=0.4\
 PKG_VERSION:=2021-12-22
 - qmi.sh: Some minor cosmetic corrections.
 
@@ -134,7 +142,7 @@ If you don´t find uqmi with desciption: `Control utility for mobile broadband m
 **usbmode**
 
 USB mode switch utility based on https://git.openwrt.org/project/usbmode.git 2017-12-19.\
-Added config #0 and a 100milliseconds delay before switching to actual config.\
+Added config #0 and a 100milliseconds delay before switching to actual config. *Included in usbmode.git 2022-02-24*\
 Now Huawei ME909s-120 can switch to MBIM protocol, just add:
 ```
                 "12d1:15c1": {
@@ -147,4 +155,3 @@ Now Huawei ME909s-120 can switch to MBIM protocol, just add:
 ```
 to /etc/usb.mode.json\
 \
-Official usbmode is updated 2022-02-24 with this patch.
