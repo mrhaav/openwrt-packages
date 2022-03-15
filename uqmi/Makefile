@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=uqmi
 PKG_RELEASE:=0.4
-PKG_VERSION:=2022-03-12
+PKG_VERSION:=2022-03-15
 
 # PKG_SOURCE_PROTO:=git
 # PKG_SOURCE_URL=$(PROJECT_GIT)/project/uqmi.git
