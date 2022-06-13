@@ -107,7 +107,7 @@ If PDP-type = IPv4v6, dual-stack will be activate. Default APN profile is define
 
 PKG_RELEASE:=0.4\
 PKG_VERSION:=2022-03-15
-- wms: Added --storage argument for reading SMS from me, not only from sim.
+- wms: Added --storage argument for reading SMS from me, not only from sim. *Included in uqmi.git 2022-05-04*
 
 PKG_RELEASE:=0.4\
 PKG_VERSION:=2022-03-12
@@ -127,7 +127,7 @@ PKG_VERSION:=2021-12-22
 
 - nas: Added support for three digit MNC even if the value is less then 100. MNC = 008 will be a three-digit and 08 will be a two-digit MNC.
 - wds: Added command: --create-profile
-- nas: Added decoding of lte_system_info_v2.cid and intrafrequency_lte_info_v2.global_cell_id to enodeb_id and cell_id and decoding of wcdma_system_info_v2.cid to rnc_id and cell_id. Change order to mcc-mnc-tac/lac-enodeb_id/rnc_id-cell_id.
+- nas: Added decoding of lte_system_info_v2.cid and intrafrequency_lte_info_v2.global_cell_id to enodeb_id and cell_id and decoding of wcdma_system_info_v2.cid to rnc_id and cell_id. Change order to mcc-mnc-tac/lac-enodeb_id/rnc_id-cell_id. *Included in uqmi.git 2022-05-04*
 - wds: Added command: --get-default-profile-number, --get-profile-settings, --modify-profile
 - dms: Added command: --get-device-operating-mode *Included in uqmi.git 2022-02-22*
 
