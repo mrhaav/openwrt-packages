@@ -128,7 +128,7 @@ done
 
 if [ "$Arecord" = "A" ]
 then
-    xmllint --xpath '//data/value['$x']/struct' $tempFolder/status_$subdomain.xml >> $tempFolder/update_$subdomain.xml
+    xmllint --xpath '//data/value['$x']' $tempFolder/status_$subdomain.xml >> $tempFolder/update_$subdomain.xml
 
     echo '    </param>' >> $tempFolder/update_$subdomain.xml
     echo '  </params>' >> $tempFolder/update_$subdomain.xml
@@ -193,7 +193,7 @@ then
         if [ $newIP != $dnsIP ] || [ $checkForcedUpdate != 'No' ]
         then
             updateStatus=$(updateDNS)
-            if [ $updateStatus != 'OK' ]
+            if [ "$updateStatus" != 'OK' ]
             then
                 logger -t loopiaAPI -p 3 $1' DNS update went wrong:' $updateStatus
             else
