@@ -1,6 +1,6 @@
 #!/bin/sh
 # Loopia DNS API access
-# by mrhaav 2021-12-30
+# by mrhaav 2021-12-29
 #  $1 = interface  $2 = IPaddress
 #
 # uci show ddns
