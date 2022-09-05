@@ -20,6 +20,7 @@
  */
 
 #include "qmi-message.h"
+#include <math.h>
 
 static struct qmi_nas_get_tx_rx_info_request tx_rx_req;
 static struct qmi_nas_set_system_selection_preference_request sel_req;
@@ -92,6 +93,61 @@ print_earfcn_info(uint32_t earfcn)
 		}
 	}
 }
+
+static char *dec2bin (int decimalnum)
+{
+	static char binarynum[9];
+	for (int i = 1; i<9; i++) {
+		if (decimalnum % 2 == 1) {
+			binarynum[8-i] = 49;
+		} else {
+			binarynum[8-i] = 48;
+		}
+		decimalnum = decimalnum / 2;
+	}
+	return binarynum;
+}
+
+static int bin2ascii (char binary7[8])
+{
+	int ascii_out = 0;
+	for (int x = 6;x>=0;x--) {
+		if (binary7[6-x] == 49)
+			ascii_out = ascii_out + pow(2, x);
+	}
+	return ascii_out;
+}
+
+static const char *encode8decode7 (char encode8str[])
+{
+	char bin_str[80];
+	static char decode7out[10];
+	char decode7[8];
+
+	for(int n=strlen(encode8str)-1;n>=0;n--) {
+		int dec_of_char = encode8str[n];
+		if (dec_of_char < 0)
+			dec_of_char = dec_of_char + 256;
+		if (strlen(encode8str) - n == 1 ) {
+			strcpy(bin_str, dec2bin (dec_of_char));
+		} else {
+			strcat(bin_str, dec2bin (dec_of_char));
+		}
+	}
+	int bin_len=strlen(bin_str);
+	for (int i=1;i<=bin_len/7;i++) {
+		for (int x=0;x<7;x++)
+			decode7[x] = bin_str[bin_len-i*7+x];
+		if (i < bin_len/7) {
+			decode7out[i-1] = bin2ascii(decode7);
+		} else {
+			if (strcmp(decode7, "0000000") != 0)
+				decode7out[i-1] = bin2ascii(decode7);
+		}
+	}
+	return decode7out;
+}
+
 
 #define cmd_nas_do_set_system_selection_cb no_cb
 static enum qmi_cmd_result
@@ -938,6 +994,7 @@ cmd_nas_get_serving_system_cb(struct qmi_dev *qmi, struct qmi_request *req, stru
 		[QMI_NAS_REGISTRATION_STATE_UNKNOWN] = "unknown",
 	};
 	void *c;
+	char plmn_desc[20];
 
 	qmi_parse_nas_get_serving_system_response(msg, &res);
 
@@ -951,8 +1008,16 @@ cmd_nas_get_serving_system_cb(struct qmi_dev *qmi, struct qmi_request *req, stru
 		blobmsg_add_string(&status, "registration", reg_states[state]);
 	}
 	if (res.set.current_plmn) {
-                if (res.data.current_plmn.description)
-                        blobmsg_add_string(&status, "plmn_description", res.data.current_plmn.description);
+                if (res.data.current_plmn.description) {
+			strcpy(plmn_desc, res.data.current_plmn.description);
+			for (int i = 0;i<strlen(plmn_desc);i++) {
+				if (plmn_desc[i] < 32 || plmn_desc[i] > 126) {
+					strcpy(plmn_desc, encode8decode7(plmn_desc));
+					break;
+				}
+			}
+                        blobmsg_add_string(&status, "plmn_description", plmn_desc);
+		}
 		blobmsg_add_u32(&status, "plmn_mcc", res.data.current_plmn.mcc);
 		blobmsg_add_u32(&status, "plmn_mnc", res.data.current_plmn.mnc);
 	}
