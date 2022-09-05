@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=uqmi
-PKG_RELEASE:=0.4
-PKG_VERSION:=2022-03-15
+PKG_RELEASE:=0.8
+PKG_VERSION:=2022-07-14
 
 # PKG_SOURCE_PROTO:=git
 # PKG_SOURCE_URL=$(PROJECT_GIT)/project/uqmi.git
@@ -40,12 +40,21 @@ TARGET_CFLAGS += \
 TARGET_LDFLAGS += -Wl,--gc-sections
 
 CMAKE_OPTIONS += \
-	-DDEBUG=1
+	-DDEBUG=1 \
+	-DDEBUG_PACKET=0
 
 define Package/uqmi/install
 	$(INSTALL_DIR) $(1)/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/uqmi $(1)/sbin/
-	$(CP) ./files/* $(1)/
+
+	$(INSTALL_DIR) $(1)/lib/netifd/proto
+	$(INSTALL_BIN) ./files/lib/netifd/proto/qmi.sh $(1)/lib/netifd/proto
+
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) ./files/usr/bin/uqmi_d.sh $(1)/usr/bin
+
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_BIN) ./files/etc/init.d/uqmi_d $(1)/etc/init.d
 endef
 
 $(eval $(call BuildPackage,uqmi))
