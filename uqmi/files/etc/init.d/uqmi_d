@@ -1,0 +1,17 @@
+#!/bin/sh /etc/rc.common
+# uqmi connection daemon
+
+START=99
+STOP=01
+
+USE_PROCD=1
+
+start_service() {
+    procd_open_instance
+    procd_set_param command sh "/usr/bin/uqmi_d.sh"
+    procd_close_instance
+}
+
+stop_service() {
+	/usr/bin/uqmi_led.sh -200 2> /dev/null
+}
