@@ -1,12 +1,12 @@
 #!/bin/sh
 #
-# uqmi daemon every 30sec
+# uqmi daemon, runs every 30sec
 # 1. Check IP-address in get-current-settings
 # 2. Send SMS from /var/sms/send
 # 3. Check received SMS
 # 4. rssi LED trigger
 #
-# by mrhaav 2022-09-02
+# by mrhaav 2022-09-12
 
 . /lib/functions.sh
 . /lib/netifd/netifd-proto.sh
@@ -20,6 +20,7 @@ mkdir -p $sendFolder
 interface=$(uci show network | grep qmi | awk -F . '{print $2}')
 device=$(uci get network.${interface}.device)
 default_profile=$(uci get network.${interface}.default_profile)
+ipv6profile=$(uci get network.${interface}.ipv6profile)
 smsc=$(uci get network.${interface}.smsc)
 
 json_load "$(ubus call network.interface.${interface} status)"
@@ -29,7 +30,7 @@ json_get_vars cid_4 pdh_4 cid_6 pdh_6 zone
 
 if [ ! -n "$pdh_4" ] && [ ! -n "$pdh_6" ]
 then
-	/etc/init.d/uqmi_d stop
+	/etc/init.d/uqmi_d stop 2> /dev/null
 fi
 
 logger -t uqmi_d Daemon started
@@ -79,7 +80,7 @@ do
 			json_add_string zone "$zone"
 			proto_close_data
 			proto_send_update "$interface"
-
+	
 			json_load "$(uqmi -s -d $device --set-client-id wds,$cid_4 --get-current-settings)"
 			json_select ipv4
 			json_get_var ip_4 ip
@@ -87,7 +88,7 @@ do
 			json_get_var dns1_4 dns1
 			json_get_var dns2_4 dns2
 			json_get_var subnet_4 subnet
-
+	
 			proto_init_update "$ifname" 1
 			proto_set_keep 1
 			proto_add_ipv4_address "$ip_4" "$subnet_4"
@@ -112,6 +113,11 @@ do
 			then
 				pdh_6=$(uqmi -s -d $device --set-client-id wds,"$cid_6" \
 					--start-network)
+			elif [ -n "$ipv6profile" ]
+			then
+				pdh_6=$(uqmi -s -d $device --set-client-id wds,"$cid_6" \
+					--start-network \
+					--profile $ipv6profile)
 			else
 				pdh_6=$(uqmi -s -d $device --set-client-id wds,"$cid_6" \
 					--start-network \
@@ -154,12 +160,11 @@ do
 			}
 			proto_send_update "$interface"
 		fi
-
+		
 		json_load "$(ubus call network.interface.${interface} status)"
 		json_select data
 		json_get_vars cid_4 pdh_4 cid_6 pdh_6
 	fi
-
 
 # Send SMS
 	smsTOsend=$(ls $sendFolder -w 1 | sed -n '1p')
@@ -171,17 +176,16 @@ do
 		if [ -z "$smsc" ]
 		then
 			uqmi -d $device --send-message "$SMStext" \
-				--send-message-target $Bnumber
+							--send-message-target $Bnumber
 		else
 			uqmi -d $device --send-message "$SMStext" \
-				--send-message-target $Bnumber \
-				--send-message-smsc $smsc
+							--send-message-target $Bnumber \
+							--send-message-smsc $smsc
 		fi
 		rm $sendFolder/$smsTOsend
 		smsTOsend=$(ls $sendFolder -w 1 | sed -n '1p')
 		[ -n "$smsTOsend" ] && sleep 1
 	done
-
 
 # Check received SMS
 	for storage in sim me
@@ -213,7 +217,6 @@ do
 			messageID=$(uqmi -d $device --list-messages --storage $storage  | jsonfilter -e '@[0]')
 		done
 	done
-
 
 # LED trigger
 	rssi=$(uqmi -s -d $device --get-signal-info | jsonfilter -e '@["rssi"]')

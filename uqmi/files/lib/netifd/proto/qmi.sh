@@ -15,35 +15,31 @@ proto_qmi_init_config() {
 	proto_config_add_string username
 	proto_config_add_string password
 	proto_config_add_string pincode
-	proto_config_add_int delay
-	proto_config_add_string modes
 	proto_config_add_string pdptype
-	proto_config_add_int profile
-	proto_config_add_boolean dhcp
-	proto_config_add_boolean dhcpv6
-	proto_config_add_boolean autoconnect
+	proto_config_add_int ipv6profile
+	proto_config_add_int delay
+	proto_config_add_boolean daemon
 	proto_config_add_int plmn
-	proto_config_add_int timeout
-	proto_config_add_int mtu
 	proto_config_add_defaults
 }
 
 proto_qmi_setup() {
 	local interface="$1"
-	local dataformat connstat plmn_mode mcc mnc
-	local device apn auth username password pincode delay modes pdptype
-	local profile dhcp dhcpv6 autoconnect plmn timeout mtu $PROTO_DEFAULT_OPTIONS
-	local ip4table ip6table
-	local cid_4 pdh_4 cid_6 pdh_6
+	local data_format plmn_mode mcc mnc plmn_mcc plmn_mnc mnc_length
+	local device apn auth username password pincode delay pdptype
+	local ipv6profile plmn operator plmn_description mtu $PROTO_DEFAULT_OPTIONS
+	local ip4table ip6table cid_4 pdh_4 cid_6 pdh_6
 	local ip_6 ip_prefix_length gateway_6 dns1_6 dns2_6
-	local update_default_apn=false
-	local x=0
+	local daemon_stop pin_status default_profile op_mode been_searching
+	local def_apn def_auth def_username def_password def_pdptype
+	local set_plmn full_mnc signal_info radio_type
+	local pin1_status pin_verified registration
 
-	json_get_vars device apn auth username password pincode delay modes
-	json_get_vars pdptype profile dhcp dhcpv6 autoconnect plmn ip4table
-	json_get_vars ip6table timeout mtu $PROTO_DEFAULT_OPTIONS
+	json_get_vars device apn auth username password pincode delay
+	json_get_vars pdptype ipv6profile daemon plmn ip4table
+	json_get_vars ip6table mtu $PROTO_DEFAULT_OPTIONS
 
-	[ "$timeout" = "" ] && timeout="10"
+	[ "$delay" = "" ] && delay="10"
 
 	[ "$metric" = "" ] && metric="0"
 
@@ -81,6 +77,10 @@ proto_qmi_setup() {
 		/sbin/ip link set dev $ifname mtu $mtu
 	}
 
+# Stop daemon
+	daemon_stop=$(/etc/init.d/uqmi_d stop 2>&1)
+	[ -z "$daemon_stop" ] && logger -t uqmi_d Daemon stopped, modem init
+
 # Check PIN status
 	pin_status=$(uqmi -s -d "$device" --uim-get-sim-state -t 2000 2>&1)
 	while [ ${pin_status:0:1} = 'R' ]
@@ -91,7 +91,7 @@ proto_qmi_setup() {
 	done
 	if [ ${pin_status:0:1} != '{' ]
 	then
-		echo Can´t check the PINcode
+		echo Can not check the PINcode
 		echo Make sure that PINcode is de-activated
 	else
 		json_load $pin_status
@@ -139,7 +139,7 @@ proto_qmi_setup() {
 	fi
 
 # Check data format
-	uqmi -d "$device"  --wda-set-data-format 802.3 > /dev/null 2>&1
+	uqmi -d "$device"  --wda-set-data-format raw-ip > /dev/null 2>&1
 	data_format=$(uqmi -d "$device" --wda-get-data-format)
 	if [ "$data_format" = '"raw-ip"' ]
 	then
@@ -164,6 +164,7 @@ proto_qmi_setup() {
 	fi
 
 # Check default APN profile
+	local update_default_apn=false
 	if [ -z "$pdptype" ] || [ -z "$auth" ]
 	then
 		echo "Check pdptype and auth settings"
@@ -171,15 +172,9 @@ proto_qmi_setup() {
 		proto_block_restart "$interface"
 		return 1
 	fi
-	if [ $pdptype = 'ipv4' ] || [ $pdptype = 'ipv4v6' ]
-	then
-		pdptype_def='ipv4'
-	else
-		pdptype_def='ipv6'
-	fi
 	json_load "$(uqmi -s -d "$device" --get-default-profile-number 3gpp)"
 	json_get_var default_profile default-profile
-	echo Default profile number: $default_profile
+	echo Default profile: $default_profile
 	json_load "$(uqmi -s -d "$device" --get-profile-settings 3gpp,$default_profile)"
 	json_get_var def_apn apn
 	json_get_var def_pdptype pdp-type
@@ -187,7 +182,7 @@ proto_qmi_setup() {
 	json_get_var def_password password
 	json_get_var def_auth auth
 	[ "$def_apn" != "$apn" ] && update_default_apn=true
-	[ "$def_pdptype" != "$pdptype_def" ] && update_default_apn=true
+	[ "$def_pdptype" != "$pdptype" ] && update_default_apn=true
 	[ "$def_username" != "$username" ] && update_default_apn=true
 	[ "$def_password" != "$password" ] && update_default_apn=true
 	[ "$def_auth" != "$auth" ]  && update_default_apn=true
@@ -209,50 +204,27 @@ proto_qmi_setup() {
 			done
 		fi
 		echo Change default profile
-		[ "$def_apn" != "$apn" ] && echo apn: $def_apn to $apn
-		[ "$def_pdptype" != "$pdptype_def" ] && echo pdp-type: $def_pdptype to $pdptype_def
-		[ "$def_username" != "$username" ] && echo username: $def_username to $username
-		[ "$def_password" != "$password" ] && echo password changed
-		[ "$def_auth" != "$auth" ]  && echo authentication: $def_auth to $auth
+		if [ ! -n "$apn" ] && [ "$def_apn" != "$apn" ]
+		then
+			echo " apn: set to network default"
+		elif [ "$def_apn" != "$apn" ]
+		then
+			echo " apn: $def_apn to $apn"
+		fi
+		[ "$def_pdptype" != "$pdptype" ] && echo " pdp-type: $def_pdptype to $pdptype"
+		[ "$def_username" != "$username" ] && echo " username: $def_username to $username"
+		[ "$def_password" != "$password" ] && echo " password changed"
+		[ "$def_auth" != "$auth" ]  && echo " authentication: $def_auth to $auth"
 		uqmi -d "$device" --modify-profile 3gpp,$default_profile \
 			--apn "$apn" \
-			--pdp-type "$pdptype_def" \
+			--pdp-type "$pdptype" \
 			--username "$username" \
 			--password "$password" \
 			--auth "$auth"
 	fi
-
-# Configure profile for dual-stack
-	if [ $pdptype = 'ipv4v6' ]
-	then
-		echo "Configure profile for dual-stack"
-		dualstack_profile=$((default_profile+1))
-		pdptype_ds='ipv6'
-		modify_ds=$(uqmi -d "$device" --modify-profile 3gpp,$dualstack_profile \
-					--apn "$apn" \
-					--pdp-type "$pdptype_ds" \
-					--username "$username" \
-					--password "$password" \
-					--auth "$auth" 2>&1)
-		if [ ! -z "$modify_ds" ]
-		then
-			create_ds=$(uqmi -s -d "$device" --create-profile 3gpp \
-						--apn "$apn" \
-						--pdp-type "$pdptype_ds" \
-						--username "$username" \
-						--password "$password" \
-						--auth "$auth" 2>&1)
-			if [ ${create_ds:0:1} != '{' ]
-			then
-				echo "Unable to create profile for dual-stack"
-				pdptype='ipv4'
-			else
-				json_load $create_ds
-				json_get_var dualstack_profile created-profile
-			fi
-		fi
-		echo "Dual-stack profile number: $dualstack_profile"
-	fi
+	[ $pdptype = 'ipv4' -a -n "$ipv6profile" ] && echo IPv6 profile: $ipv6profile
+	uci set network.${interface}.default_profile=$default_profile
+	uci commit network
 
 # Check airplane mode
 	op_mode=$(uqmi -d "$device" --get-device-operating-mode)
@@ -314,8 +286,9 @@ proto_qmi_setup() {
 	fi
 
 # Check registered network and used radio technology
-	first_registration=true
-	wait_for_registration=true
+	local first_registration=true
+	local wait_for_registration=true
+	local x=0
 	while [ "$wait_for_registration" = true ] && [ $x -lt 20 ]
 	do
 		[ $first_registration = false ] && sleep 3
@@ -366,7 +339,7 @@ proto_qmi_setup() {
 		else
 			full_mnc=""
 		fi
-		echo $registration on "$plmn_mcc""$full_mnc"
+		echo " $registration on $plmn_mcc$full_mnc"
 		first_registration=false
 	done
 
@@ -381,7 +354,7 @@ proto_qmi_setup() {
 	radio_type=$(echo "$radio_type" | awk '{print toupper($0)}')
 	if [ "$registration" != registered ]
 	then
-		if [ -z $operator ] 
+		if [ -z "$operator" ]
 		then
 			full_mnc=00$plmn_mnc
 			[ $plmn_mnc_length = 2 ] && full_mnc=${full_mnc: -2} || full_mnc=${full_mnc: -3}
@@ -398,21 +371,44 @@ proto_qmi_setup() {
 	fi
 
 # Start network interface
-	if [ $pdptype_def = 'ipv4' ]
+# IPv4
+	if [ $pdptype = 'ipv4' ] || [ $pdptype = 'ipv4v6' ]
 	then
 		cid_4=$(uqmi -s -d "$device" --get-client-id wds)
 		uqmi -s -d "$device" --set-client-id wds,"$cid_4" --set-ip-family ipv4
 		pdh_4=$(uqmi -s -d "$device" --set-client-id wds,"$cid_4" \
 						--start-network \
 						--profile $default_profile)
-		if ! [ "$pdh_4" -eq "$pdh_4" ] 2> /dev/null
+		if [ "$pdh_4" = '"Call failed"' ]
 		then
 			echo "Unable to connect with ipv4, check APN settnings"
 			proto_notify_error "$interface" IPV4_APN_ERROR
 			proto_block_restart "$interface"
 			return 1
 		else
-			echo "Default profile connected with ipv4"
+			echo "Connected with IPv4"
+		fi
+# IPv6
+		if [ $pdptype = 'ipv4v6' ]
+		then
+			cid_6=$(uqmi -s -d "$device" --get-client-id wds)
+			uqmi -s -d "$device" --set-client-id wds,"$cid_6" --set-ip-family ipv6
+			pdh_6=$(uqmi -s -d "$device" --set-client-id wds,"$cid_6" \
+							--start-network)
+		elif [ $pdptype = 'ipv4' ] && [ -n "$ipv6profile" ]
+		then
+			cid_6=$(uqmi -s -d "$device" --get-client-id wds)
+			uqmi -s -d "$device" --set-client-id wds,"$cid_6" --set-ip-family ipv6
+			pdh_6=$(uqmi -s -d "$device" --set-client-id wds,"$cid_6" \
+							--start-network \
+							--profile $ipv6profile)
+		fi
+		if [ "$pdh_6" = '"Call failed"' ]
+		then
+			echo "Unable to connect with IPv6"
+			pdh_6=''
+		else
+			echo "Connected with IPv6"
 		fi
 	elif [ $pdptype_def = 'ipv6' ]
 	then
@@ -421,31 +417,17 @@ proto_qmi_setup() {
 		pdh_6=$(uqmi -s -d "$device" --set-client-id wds,"$cid_6" \
 						--start-network \
 						--profile $default_profile)
-		if ! [ "$pdh_6" -eq "$pdh_6" ] 2> /dev/null
+		if [ "$pdh_6" = '"Call failed"' ]
 		then
 			echo "Unable to connect with ipv6, check APN settnings"
 			proto_notify_error "$interface" IPV6_APN_ERROR
 			proto_block_restart "$interface"
 			return 1
-                else
-                        echo "Default profile connected with ipv6"
+		else
+			echo "Connected with ipv6"
 		fi
 	fi
-	if [ $pdptype = 'ipv4v6' ]
-	then
-		cid_6=$(uqmi -s -d "$device" --get-client-id wds)
-		uqmi -s -d "$device" --set-client-id wds,"$cid_6" --set-ip-family ipv6
-		pdh_6=$(uqmi -s -d "$device" --set-client-id wds,"$cid_6" \
-						--start-network \
-						--profile $dualstack_profile)
-		if ! [ "$pdh_6" -eq "$pdh_6" ] 2> /dev/null
-		then
-			echo "Unable to connect ipv6 dual-stack profile"
-			pdh_6=''
-                else
-                        echo "Dual-stack ipv6 profile connected"
-		fi
-	fi
+
 
 # Start interface
 	echo "Setting up $ifname"
@@ -466,98 +448,80 @@ proto_qmi_setup() {
 	local zone="$(fw3 -q network "$interface" 2>/dev/null)"
 
 	[ -n "$pdh_6" ] && {
-		if [ -z "$dhcpv6" -o "$dhcpv6" = 0 ]; then
-			json_load "$(uqmi -s -d $device --set-client-id wds,$cid_6 --get-current-settings)"
-			json_select ipv6
-			json_get_var ip_6 ip
-			json_get_var gateway_6 gateway
-			json_get_var dns1_6 dns1
-			json_get_var dns2_6 dns2
-			json_get_var ip_prefix_length ip-prefix-length
+		json_load "$(uqmi -s -d $device --set-client-id wds,$cid_6 --get-current-settings)"
+		json_select ipv6
+		json_get_var ip_6 ip
+		json_get_var gateway_6 gateway
+		json_get_var dns1_6 dns1
+		json_get_var dns2_6 dns2
+		json_get_var ip_prefix_length ip-prefix-length
 
-			proto_init_update "$ifname" 1
-			proto_set_keep 1
-			proto_add_ipv6_address "$ip_6" "128"
-			proto_add_ipv6_prefix "${ip_6}/${ip_prefix_length}"
-			proto_add_ipv6_route "$gateway_6" "128"
-			[ "$defaultroute" = 0 ] || proto_add_ipv6_route "::0" 0 "$gateway_6" "" "" "${ip_6}/${ip_prefix_length}"
-			[ "$peerdns" = 0 ] || {
-				proto_add_dns_server "$dns1_6"
-				proto_add_dns_server "$dns2_6"
-			}
-			[ -n "$zone" ] && {
-				proto_add_data
-				json_add_string zone "$zone"
-				proto_close_data
-			}
-			proto_send_update "$interface"
-		else
-			json_init
-			json_add_string name "${interface}_6"
-			json_add_string ifname "@$interface"
-			json_add_string proto "dhcpv6"
-			[ -n "$ip6table" ] && json_add_string ip6table "$ip6table"
-			proto_add_dynamic_defaults
-			# RFC 7278: Extend an IPv6 /64 Prefix to LAN
-			json_add_string extendprefix 1
-			[ -n "$zone" ] && json_add_string zone "$zone"
-			json_close_object
-			ubus call network add_dynamic "$(json_dump)"
-		fi
+		proto_init_update "$ifname" 1
+		proto_set_keep 1
+		proto_add_ipv6_address "$ip_6" "128"
+		proto_add_ipv6_prefix "${ip_6}/${ip_prefix_length}"
+		proto_add_ipv6_route "$gateway_6" "128"
+		[ "$defaultroute" = 0 ] || proto_add_ipv6_route "::0" 0 "$gateway_6" "" "" "${ip_6}/${ip_prefix_length}"
+		[ "$peerdns" = 0 ] || {
+			proto_add_dns_server "$dns1_6"
+			proto_add_dns_server "$dns2_6"
+		}
+		[ -n "$zone" ] && {
+			proto_add_data
+			json_add_string zone "$zone"
+			proto_close_data
+		}
+		proto_send_update "$interface"
 	}
 
 	[ -n "$pdh_4" ] && {
-		if [ "$dhcp" = 0 ]; then
-			json_load "$(uqmi -s -d $device --set-client-id wds,$cid_4 --get-current-settings)"
-			json_select ipv4
-			json_get_var ip_4 ip
-			json_get_var gateway_4 gateway
-			json_get_var dns1_4 dns1
-			json_get_var dns2_4 dns2
-			json_get_var subnet_4 subnet
+		json_load "$(uqmi -s -d $device --set-client-id wds,$cid_4 --get-current-settings)"
+		json_select ipv4
+		json_get_var ip_4 ip
+		json_get_var gateway_4 gateway
+		json_get_var dns1_4 dns1
+		json_get_var dns2_4 dns2
+		json_get_var subnet_4 subnet
 
-			proto_init_update "$ifname" 1
-			proto_set_keep 1
-			proto_add_ipv4_address "$ip_4" "$subnet_4"
-			proto_add_ipv4_route "$gateway_4" "128"
-			[ "$defaultroute" = 0 ] || proto_add_ipv4_route "0.0.0.0" 0 "$gateway_4"
-			[ "$peerdns" = 0 ] || {
-				proto_add_dns_server "$dns1_4"
-				proto_add_dns_server "$dns2_4"
-			}
-			[ -n "$zone" ] && {
-				proto_add_data
-				json_add_string zone "$zone"
-				proto_close_data
-			}
-			proto_send_update "$interface"
-		else
-			json_init
-			json_add_string name "${interface}_4"
-			json_add_string ifname "@$interface"
-			json_add_string proto "dhcp"
-			[ -n "$ip4table" ] && json_add_string ip4table "$ip4table"
-			proto_add_dynamic_defaults
-			[ -n "$zone" ] && json_add_string zone "$zone"
-			json_close_object
-			ubus call network add_dynamic "$(json_dump)"
-		fi
+		proto_init_update "$ifname" 1
+		proto_set_keep 1
+		proto_add_ipv4_address "$ip_4" "$subnet_4"
+		proto_add_ipv4_route "$gateway_4" "128"
+		[ "$defaultroute" = 0 ] || proto_add_ipv4_route "0.0.0.0" 0 "$gateway_4"
+		[ "$peerdns" = 0 ] || {
+			proto_add_dns_server "$dns1_4"
+			proto_add_dns_server "$dns2_4"
+		}
+		[ -n "$zone" ] && {
+			proto_add_data
+			json_add_string zone "$zone"
+			proto_close_data
+		}
+		proto_send_update "$interface"
 	}
+
+# Start deamon
+	[ "$daemon" != 0 ] && /etc/init.d/uqmi_d start
 }
 
 qmi_wds_stop() {
 	local cid="$1"
 	local pdh="$2"
+	local daemon_stop
+
+# Stop deamon
+	daemon_stop=$(/etc/init.d/uqmi_d stop 2>&1)
+	[ -z "$daemon_stop" ] && logger -t uqmi_d Daemon stopped, interface down
 
 	[ -n "$cid" ] || return
 
-	uqmi -s -d "$device" --set-client-id wds,"$cid" \
-		--stop-network 0xffffffff \
-		--autoconnect > /dev/null 2>&1
-
 	[ -n "$pdh" ] && {
 		uqmi -s -d "$device" --set-client-id wds,"$cid" \
-			--stop-network "$pdh" > /dev/null 2>&1
+			--stop-network "$pdh"
+	} || {
+		 uqmi -s -d "$device" --set-client-id wds,"$cid" \
+			--stop-network 0xffffffff \
+			--autoconnect > /dev/null 2>&1
 	}
 
 	uqmi -s -d "$device" --set-client-id wds,"$cid" \
