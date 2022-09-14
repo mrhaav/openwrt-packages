@@ -276,6 +276,58 @@ cmd_wds_modify_profile_prepare(struct qmi_dev *qmi, struct qmi_request *req, str
 }
 
 static void
+cmd_wds_delete_profile_cb(struct qmi_dev *qmi, struct qmi_request *req, struct qmi_msg *msg)
+{
+	struct qmi_wds_delete_profile_response res;
+	qmi_parse_wds_delete_profile_response(msg, &res);
+}
+
+static enum qmi_cmd_result
+cmd_wds_delete_profile_prepare(struct qmi_dev *qmi, struct qmi_request *req, struct qmi_msg *msg, char *arg)
+{
+	int id;
+	char *s;
+	char *p_type;
+
+	s = strchr(arg, ',');
+	if (!s) {
+		fprintf(stderr, "Invalid argument\n");
+		return QMI_CMD_EXIT;
+	}
+	*s = 0;
+	s++;
+
+	id = strtoul(s, &s, 0);
+	if (s && *s) {
+		fprintf(stderr, "Invalid argument\n");
+		return QMI_CMD_EXIT;
+	}
+
+	p_type = strtok(arg, ",");
+
+	int i;
+	for (i = 0; i < ARRAY_SIZE(profile_types); i++) {
+		if (strcasecmp(profile_types[i].profile_name, p_type) != 0)
+			continue;
+
+		struct qmi_wds_delete_profile_request wds_del_req = {
+			QMI_INIT_SEQUENCE(profile_identifier,
+				.profile_type = profile_types[i].profile,
+				.profile_index = id,
+			)
+		};
+		qmi_set_wds_delete_profile_request(msg, &wds_del_req);
+		return QMI_CMD_REQUEST;
+	}
+
+	uqmi_add_error("Invalid value (valid: 3gpp or 3gpp2)");
+	return QMI_CMD_EXIT;
+}
+
+
+
+
+static void
 cmd_wds_create_profile_cb(struct qmi_dev *qmi, struct qmi_request *req, struct qmi_msg *msg)
 {
 	struct qmi_wds_create_profile_response res;
