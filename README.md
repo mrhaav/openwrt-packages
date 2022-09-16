@@ -105,6 +105,29 @@ Control utility for mobile broadband modems. Based on https://git.openwrt.org/pr
 This version use APN profiles. The default APN profile is verified before the modem goes online. If the default profile is not correct, the modem is set to Airplane mode on and the profile is corrected. Then the modem is set to Airplane mode off.\
 If PDP-type = IPv4v6, dual-stack will be activate. Default APN profile is defined with IPv4 and a secondary profile is defined with IPv6.
 
+PKG_RELEASE:=0.8\
+PKG_VERSION:=2022-07-14
+- Added an SMS sender function to the daemon. Store the SMS file in /var/sms/send with Bnumber, in international format (+46708123456), at the first row and the SMS test in the following rows.
+Received SMS are stored in /var/sms/received.
+If the SMSC number is not stored on the SIM card, you can add it with:
+```
+uci set network.<your interface>.smsc=<SMSC number> (smsc number in international format)
+uci commit network
+```
+
+PKG_RELEASE:=0.6\
+PKG_VERSION:=2022-05-16
+- Correction for decoding of plmn_description, in --get-serving-system. Some modems reads the PLMN name, from the SIM card field 6FC5, as 8bit characters. But the information is coded as 7bit GSM and stored in 8bit format.
+
+PKG_RELEASE:=0.5\
+PKG_VERSION:=2022-04-22
+- A SMS receiver is included in the daemon. The SMS is stored in /var/sms and the file name is sent to script /usr/bin/uqmi_sms.sh. (uqmi_sms.sh is not included in the ipk file)
+
+PKG_RELEASE:=0.4\
+PKG_VERSION:=2022-04-22
+- A connectivity daemon is added. It will check modem connectivity every 30sec. If the modem is dis-connected, it will be re-connected and the interface is updated with the new IP address.
+The daemon will send the RSSI value to script /usr/bin/uqmi_led.sh to trigger signal strenght LEDs. (uqmi_led.sh is not included in the ipk file)
+
 PKG_RELEASE:=0.4\
 PKG_VERSION:=2022-03-15
 - wms: Added --storage argument for reading SMS from me, not only from sim. *Included in uqmi.git 2022-05-04*
