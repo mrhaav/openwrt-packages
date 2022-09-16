@@ -103,18 +103,18 @@ Control utility for mobile broadband modems. Based on https://git.openwrt.org/pr
 
 Control utility for mobile broadband modems. Based on https://git.openwrt.org/project/uqmi.git 2021-11-22.\
 This version use APN profiles. The default APN profile is verified before the modem goes online. If the default profile is not correct, the modem is set to Airplane mode on and the profile is corrected. Then the modem is set to Airplane mode off.\
-If PDP-type = IPv4v6, dual-stack will be activate. Default APN profile is defined with IPv4 and a secondary profile is defined with IPv6.
+If PDP-type = IPv4v6, dual-stack will be activate.
 
 PKG_RELEASE:=0.9\
 PKG_VERSION:=2022-09-13
 - wds: Added --delete-profile
-- raw-ip is the deafult data format
-- If you need a different IPv6 APN to activate dual-stack, configure the APN in Luci as IPv4 and add manually the IPv6 profile with uqmi --create-profile/--modify-profile. Add the IPv6 profile number with:
+- qmi.sh: raw-ip is the default data format
+- qmi.sh: If you need a different IPv6 APN to activate dual-stack, configure the APN in Luci as IPv4 and add manually the IPv6 profile with uqmi --create-profile/--modify-profile. Add the IPv6 profile number with:
 ```
 uci set network.<your interface>.ipv6profile=<ipv6 profile number>
 uci commit network
 ```
-- You can turn off the daemon with:
+- uqmi_d.sh: You can turn off the daemon with:
 ```
 uci set network.<your interface>.daemon=false
 uci commit network
@@ -122,7 +122,7 @@ uci commit network
 
 PKG_RELEASE:=0.8\
 PKG_VERSION:=2022-07-14
-- Added an SMS sender function to the daemon. Store the SMS file in /var/sms/send with Bnumber, in international format (+46708123456), at the first row and the SMS test in the following rows.
+- uqmi_d.sh: Added an SMS sender function to the daemon. Store the SMS file in /var/sms/send with Bnumber, in international format (+46708123456), at the first row and the SMS test in the following rows.
 Received SMSs are now stored in /var/sms/received.\
 If you have problems with sending SMSs, add the SMSC number with:
 ```
@@ -132,15 +132,15 @@ uci commit network
 
 PKG_RELEASE:=0.6\
 PKG_VERSION:=2022-05-16
-- Correction for decoding of plmn_description, in --get-serving-system. Some modems reads the PLMN name, from the SIM card field 6FC5, as 8bit characters. But the information is coded as 7bit GSM and stored in 8bit format.
+- nas: Correction for decoding of plmn_description, in --get-serving-system. Some modems reads the PLMN name, from the SIM card field 6FC5, as 8bit characters. But the information is coded as 7bit GSM and stored in 8bit format.
 
 PKG_RELEASE:=0.5\
 PKG_VERSION:=2022-04-22
-- An SMS receiver is included in the daemon. The SMS is stored in /var/sms and the file name is sent to script /usr/bin/uqmi_sms.sh. (uqmi_sms.sh is not included in the ipk file)
+- uqmi_d.sh: An SMS receiver is included in the daemon. The SMS is stored in /var/sms and the file name is sent to script /usr/bin/uqmi_sms.sh. (uqmi_sms.sh is not included in the ipk file)
 
 PKG_RELEASE:=0.4\
 PKG_VERSION:=2022-04-22
-- A connectivity daemon is added. It will check modem connectivity every 30sec. If the modem is disconnected, the daemon will be re-connected the session and update the interface with the new IP address.\
+- uqmi_d.sh: A connectivity daemon is added. It will check modem connectivity every 30sec. If the modem is disconnected, the daemon will be re-connected the session and update the interface with the new IP address.\
 The daemon will send the RSSI value to script /usr/bin/uqmi_led.sh to trigger signal strenght LEDs. (uqmi_led.sh is not included in the ipk file)
 
 PKG_RELEASE:=0.4\
@@ -149,7 +149,7 @@ PKG_VERSION:=2022-03-15
 
 PKG_RELEASE:=0.4\
 PKG_VERSION:=2022-03-12
-- wms: corrected too short received SMS. When characters with ascii values bigger than 0x7f are used, the length of the received text message is too short. *Included in uqmi.git 2022-03-12*
+- wms: Corrected too short received SMS. When characters with ascii values bigger than 0x7f are used, the length of the received text message is too short. *Included in uqmi.git 2022-03-12*
 
 PKG_RELEASE:=0.4\
 PKG_VERSION:=2021-12-22
