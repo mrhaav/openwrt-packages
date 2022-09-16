@@ -407,7 +407,8 @@ proto_qmi_setup() {
 		then
 			echo "Unable to connect with IPv6"
 			pdh_6=''
-		else
+		elif [ -n "$pdh_6" ]
+		then
 			echo "Connected with IPv6"
 		fi
 	elif [ $pdptype_def = 'ipv6' ]
@@ -424,7 +425,7 @@ proto_qmi_setup() {
 			proto_block_restart "$interface"
 			return 1
 		else
-			echo "Connected with ipv6"
+			echo "Connected with IPv6"
 		fi
 	fi
 
