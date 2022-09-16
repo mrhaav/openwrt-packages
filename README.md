@@ -109,7 +109,7 @@ PKG_RELEASE:=0.9\
 PKG_VERSION:=2022-09-13
 - wds: Added --delete-profile
 - qmi.sh: raw-ip is the default data format
-- qmi.sh: If you need a different IPv6 APN to activate dual-stack, configure the APN in Luci as IPv4 and add manually the IPv6 profile with uqmi --create-profile/--modify-profile. Add the IPv6 profile number with:
+- qmi.sh: If you need a different IPv6 APN to activate dual-stack, define the APN in Luci as IPv4 and configure manually the IPv6 profile with uqmi --create-profile/--modify-profile. Add the IPv6 profile number with:
 ```
 uci set network.<your interface>.ipv6profile=<ipv6 profile number>
 uci commit network
@@ -122,7 +122,7 @@ uci commit network
 
 PKG_RELEASE:=0.8\
 PKG_VERSION:=2022-07-14
-- uqmi_d.sh: Added an SMS sender function to the daemon. Store the SMS file in /var/sms/send with Bnumber, in international format (+46708123456), at the first row and the SMS test in the following rows.
+- uqmi_d.sh: Added an SMS sender function to the daemon. Store the SMS file in /var/sms/send with the Bnumber, in international format (+46708123456), in the first row and the SMS text in the following rows.
 Received SMSs are now stored in /var/sms/received.\
 If you have problems with sending SMSs, add the SMSC number with:
 ```
@@ -132,7 +132,7 @@ uci commit network
 
 PKG_RELEASE:=0.6\
 PKG_VERSION:=2022-05-16
-- nas: Correction for decoding of plmn_description, in --get-serving-system. Some modems reads the PLMN name, from the SIM card field 6FC5, as 8bit characters. But the information is coded as 7bit GSM and stored in 8bit format.
+- nas: Correction for decoding of plmn_description, in --get-serving-system. Some modems reads the PLMN name, from the SIM card field 6FC5, as 8bit characters. But the information is coded in 7bit GSM format and stored as 8bit format.
 
 PKG_RELEASE:=0.5\
 PKG_VERSION:=2022-04-22
