@@ -110,7 +110,7 @@ PKG_VERSION:=2022-09-13
 - wds: Added --delete-profile
 - raw-ip is the deafult data format
 - If you need a different IPv6 APN to activate dual-stack, configure the APN in Luci as IPv4 and add manually the IPv6 profile with uqmi --create-profile/--modify-profile. Add the IPv6 profile number with:
-````
+```
 uci set network.<your interface>.ipv6profile=<ipv6 profile number>
 uci commit network
 ```
