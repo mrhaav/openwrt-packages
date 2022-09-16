@@ -210,7 +210,7 @@ do
 			fi
 			echo "$sender" > $receiveFolder/$sms_file
 			echo "$text" >> $receiveFolder/$sms_file
-			logger -t uqmi_d SMS recieved from $sender
+			logger -t uqmi_d SMS received from $sender
 			/usr/bin/uqmi_sms.sh $receiveFolder/${sms_file} 2> /dev/null
 			uqmi -d $device --delete-message $messageID --storage $storage
 			sleep 1
