@@ -140,7 +140,7 @@ PKG_VERSION:=2022-04-22
 
 PKG_RELEASE:=0.4\
 PKG_VERSION:=2022-04-22
-- uqmi_d.sh: A connectivity daemon is added. It will check modem connectivity every 30sec. If the modem is disconnected, the daemon will be re-connected the session and update the interface with the new IP address.\
+- uqmi_d.sh: A connectivity daemon is added. It will check modem connectivity every 30sec. If the modem is disconnected, the daemon will re-connected the session and update the interface with the new IP address.\
 The daemon will send the RSSI value to script /usr/bin/uqmi_led.sh to trigger signal strenght LEDs. (uqmi_led.sh is not included in the ipk file)
 
 PKG_RELEASE:=0.4\
