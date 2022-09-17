@@ -132,7 +132,7 @@ uci commit network
 
 PKG_RELEASE:=0.6\
 PKG_VERSION:=2022-05-16
-- nas: Correction for decoding of plmn_description, in --get-serving-system. Some modems reads the PLMN name, from the SIM card field 6FC5, as 8bit characters. But the information is coded in 7bit GSM format and stored as 8bit format.
+- nas: Correction for decoding of plmn_description, in --get-serving-system. Some modems reads the PLMN name, from the SIM card field 6FC5, as 8bit characters. But the information is coded in 7bit GSM characters and stored as 8bit format.
 
 PKG_RELEASE:=0.5\
 PKG_VERSION:=2022-04-22
