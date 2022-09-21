@@ -289,9 +289,15 @@ proto_qmi_setup() {
 	local first_registration=true
 	local wait_for_registration=true
 	local x=0
+	local reg_delay=0
 	while [ "$wait_for_registration" = true ] && [ $x -lt 20 ]
 	do
-		[ $first_registration = false ] && sleep 3
+#		[ $first_registration = false ] && sleep 3
+		if [ x -ne 0 ]
+			then
+			reg_delay=$(($x/4*$x/4+2))
+			sleep $reg_delay
+		fi
 		x=$((x+1))
 		json_load "$(uqmi -s -d "$device" --get-serving-system)"
 		json_get_var registration registration
@@ -339,7 +345,7 @@ proto_qmi_setup() {
 		else
 			full_mnc=""
 		fi
-		echo " $registration on $plmn_mcc$full_mnc"
+		echo " $registration on $plmn_mcc$full_mnc reg_delay: $reg_delay"
 		first_registration=false
 	done
 
