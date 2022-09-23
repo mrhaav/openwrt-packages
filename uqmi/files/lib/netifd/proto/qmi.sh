@@ -19,6 +19,7 @@ proto_qmi_init_config() {
 	proto_config_add_int ipv6profile
 	proto_config_add_int delay
 	proto_config_add_boolean daemon
+	proto_config_add_boolean abort_search
 	proto_config_add_int plmn
 	proto_config_add_defaults
 }
@@ -31,12 +32,12 @@ proto_qmi_setup() {
 	local ip4table ip6table cid_4 pdh_4 cid_6 pdh_6
 	local ip_6 ip_prefix_length gateway_6 dns1_6 dns2_6
 	local daemon_stop pin_status default_profile op_mode been_searching
-	local def_apn def_auth def_username def_password def_pdptype
-	local set_plmn full_mnc signal_info radio_type
+	local def_apn def_auth def_username def_password def_pdptype daemon
+	local set_plmn full_mnc signal_info radio_type abort_search
 	local pin1_status pin_verified registration
 
 	json_get_vars device apn auth username password pincode delay
-	json_get_vars pdptype ipv6profile daemon plmn ip4table
+	json_get_vars pdptype ipv6profile daemon abort_search plmn ip4table
 	json_get_vars ip6table mtu $PROTO_DEFAULT_OPTIONS
 
 	[ "$delay" = "" ] && delay="10"
@@ -286,16 +287,16 @@ proto_qmi_setup() {
 	fi
 
 # Check registered network and used radio technology
-	local first_registration=true
 	local wait_for_registration=true
 	local x=0
 	local reg_delay=0
-	while [ "$wait_for_registration" = true ] && [ $x -lt 20 ]
+	local stop_searching=false
+	while [ "$wait_for_registration" = true ] && [ "$stop_searching" = false ]
 	do
-#		[ $first_registration = false ] && sleep 3
-		if [ x -ne 0 ]
-			then
+		if [ x -gt 0 ]
+		then
 			reg_delay=$(($x/4*$x/4+2))
+			[ $reg_delay -gt 60 ] && reg_delay=60
 			sleep $reg_delay
 		fi
 		x=$((x+1))
@@ -309,7 +310,7 @@ proto_qmi_setup() {
 			registered)
 				wait_for_registration=false
 				if [ "$plmn_mode" = manual ]
-					then
+				then
 					[ "$plmn_mcc" != "$mcc" ] && wait_for_registration=true
 					[ "$plmn_mnc" != "$mnc" ] && wait_for_registration=true
 					[ "$plmn_mnc_length" != "$mnc_length" ] && wait_for_registration=true
@@ -345,8 +346,8 @@ proto_qmi_setup() {
 		else
 			full_mnc=""
 		fi
-		echo " $registration on $plmn_mcc$full_mnc reg_delay: $reg_delay"
-		first_registration=false
+		[ $reg_delay -lt 60 ] && echo " $registration on $plmn_mcc$full_mnc reg_delay: $reg_delay"
+		[ "$abort_search" != 1 -a $x -ge 10 ] && stop_searching=true
 	done
 
 	signal_info=$(uqmi -s -d "$device" --get-signal-info)
