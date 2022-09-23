@@ -347,7 +347,7 @@ proto_qmi_setup() {
 			full_mnc=""
 		fi
 		[ $reg_delay -lt 60 ] && echo " $registration on $plmn_mcc$full_mnc"
-		[ "$abort_search" != 1 -a $x -ge 10 ] && stop_searching=true
+		[ "$abort_search" != 0 -a $x -ge 10 ] && stop_searching=true
 	done
 
 	signal_info=$(uqmi -s -d "$device" --get-signal-info)
