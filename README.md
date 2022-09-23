@@ -114,6 +114,11 @@ PKG_VERSION:=2022-09-13
 uci set network.<your interface>.ipv6profile=<ipv6 profile number>
 uci commit network
 ```
+- qmi.sh: If you have you modem in poor radio coverage, you can let the modem search for network for ever (default, it will search for 35 sec). Just add:
+```
+uci set network.<your interface>.abort_search=false
+uci commit network
+```
 - uqmi_d.sh: You can turn off the daemon with:
 ```
 uci set network.<your interface>.daemon=false
@@ -132,7 +137,7 @@ uci commit network
 
 PKG_RELEASE:=0.6\
 PKG_VERSION:=2022-05-16
-- nas: Correction for decoding of plmn_description, in --get-serving-system. Some modems reads the PLMN name, from the SIM card field 6FC5, as 8bit characters. But the information is coded in 7bit GSM characters and stored as 8bit format.
+- nas: Correction for decoding of plmn_description, in --get-serving-system. Some modems reads the PLMN name, from the SIM card field 6FC5, as 8bit characters. But the information is coded as 7bit GSM characters and stored in 8bit format.
 
 PKG_RELEASE:=0.5\
 PKG_VERSION:=2022-04-22
