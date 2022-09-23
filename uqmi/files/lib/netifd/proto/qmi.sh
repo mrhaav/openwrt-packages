@@ -293,7 +293,7 @@ proto_qmi_setup() {
 	local stop_searching=false
 	while [ "$wait_for_registration" = true ] && [ "$stop_searching" = false ]
 	do
-		if [ x -gt 0 ]
+		if [ $x -gt 0 ]
 		then
 			reg_delay=$(($x/4*$x/4+2))
 			[ $reg_delay -gt 60 ] && reg_delay=60
@@ -346,7 +346,7 @@ proto_qmi_setup() {
 		else
 			full_mnc=""
 		fi
-		[ $reg_delay -lt 60 ] && echo " $registration on $plmn_mcc$full_mnc reg_delay: $reg_delay"
+		[ $reg_delay -lt 60 ] && echo " $registration on $plmn_mcc$full_mnc"
 		[ "$abort_search" != 1 -a $x -ge 10 ] && stop_searching=true
 	done
 
