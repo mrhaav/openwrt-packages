@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
  
 PKG_NAME:=me909s
-PKG_VERSION:=2022-01-10
-PKG_RELEASE:=0.2
+PKG_VERSION:=2022-11-05
+PKG_RELEASE:=0.3
 
 PKG_MAINTAINER:=Henrik Ginstmark <henrik@ginstmark.se>
 PKG_LICENSE:=GPL-2.0
@@ -51,10 +51,13 @@ endef
 
 define Package/me909s/install
 	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) ./files/usr/bin/me909s.sh $(1)/usr/bin
+	$(INSTALL_BIN) ./files/usr/bin/me909s*.sh $(1)/usr/bin
 
 	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) ./files/etc/init.d/ME909s $(1)/etc/init.d
+	$(INSTALL_BIN) ./files/etc/init.d/me909s* $(1)/etc/init.d
+
+	$(INSTALL_DIR) $(1)/etc/hotplug.d
+	$(INSTALL_DATA) ./files/etc/hotplug.d/90-me909s $(1)/etc/hotplug.d
 
 	$(INSTALL_DIR) $(1)/etc/gcom
 	$(INSTALL_DATA) ./files/etc/gcom/* $(1)/etc/gcom
