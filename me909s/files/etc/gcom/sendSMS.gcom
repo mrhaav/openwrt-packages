@@ -1,0 +1,32 @@
+#
+# export DEST as E164 number and MSG as text message content
+# then call:
+#
+#    comgt -v -d /dev/ttyUSB2 -s /etc/gcom/sendmsg.gcom
+#
+opengt
+ set com 115200n81
+ set comecho on
+ set senddelay 0.02
+ waitquiet 1 0.2
+ flash 0.1
+
+:start
+ send "AT+CMGF=1^m"
+ waitfor 1 "OK"
+ if % != 0 goto msgerror
+ send "AT+CMGS=\""
+ send $env("DEST")
+ send "\"^m"
+ waitfor 1 ">"
+ if % != 0 goto msgerror
+ send $env("MSG")
+ send "^Z"
+ waitfor 5 "OK"
+ if % != 0 goto msgerror
+ print "OK\n"
+ exit 0
+
+:msgerror
+ print "Error\n"
+ exit 1
