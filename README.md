@@ -62,6 +62,7 @@ uci set network.wwan.ttyURC=/dev/ttyUSB2
 uci commit network
 ```
 Reboot router
+
 \
 PKG_RELEASE:=0.3\
 PKG_VERSION:=2022-11-05
