@@ -62,12 +62,12 @@ uci set network.wwan.ttyURC=/dev/ttyUSB2
 uci commit network
 ```
 Reboot router\
-
+\
 PKG_RELEASE:=0.3\
 PKG_VERSION:=2022-11-05
 - hotplug script for re-connect network initiated disconnects
 - Event based SMS receiver. Make your own roles in `/usr/bin/me909s_sms_r.sh`
-- SMS sender. `/usr/bin/me909s_sms_t.sh Bnumber'\n'SMStext`
+- SMS sender. `/usr/bin/me909s_sms_t.sh Bnumber'\n'SMStext`\
 \
 Packages dependencies:\
 `kmod-usb-net-cdc-ether`
