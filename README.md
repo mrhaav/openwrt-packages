@@ -53,19 +53,21 @@ Network - Interfaces - wwan\
 Edit - Firewall Settings\
 &nbsp;&nbsp;&nbsp;Create / Assign firewall-zone: Add wwan to correct firewall-zone
 	
-Add APN setting:
+Add APN setting and USB device number:
 ```
 uci set network.wwan.apn=internet
 uci set network.wwan.pdp_type=IP
+uci set network.wwan.ttyUSB=/dev/ttyUSB0
+uci set network.wwan.ttyURC=/dev/ttyUSB2
 uci commit network
 ```
 
-The script will check connectivity (ping 8.8.8.8) every 600 sec, by default.\
-You can change the intervall with:
-```
-uci set network.wwan.check_timer=xx
-uci commit network
-```
+PKG_RELEASE:=0.3\
+PKG_VERSION:=2022-11-05
+- hotplug script for re-connect network initiated disconnects
+- Event based SMS receiver. Make your own roles in `/usr/bin/me909s_sms_r.sh`
+- SMS sender. `/usr/bin/me909s_sms_t.sh Bnumber'\n'SMStext`
+
 Reboot router\
 \
 Packages dependencies:\
