@@ -61,8 +61,8 @@ uci set network.wwan.ttyUSB=/dev/ttyUSB0
 uci set network.wwan.ttyURC=/dev/ttyUSB2
 uci commit network
 ```
-Reboot router\
-
+Reboot router
+\
 PKG_RELEASE:=0.3\
 PKG_VERSION:=2022-11-05
 - hotplug script for re-connect network initiated disconnects
