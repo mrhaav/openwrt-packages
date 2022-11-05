@@ -1,0 +1,13 @@
+#!/bin/sh /etc/rc.common
+# Start Huawei modem
+
+START=98
+STOP=01
+
+USE_PROCD=1
+
+start_service() {
+    procd_open_instance
+    procd_set_param command sh "/usr/bin/me909s_urc.sh"
+    procd_close_instance
+}
