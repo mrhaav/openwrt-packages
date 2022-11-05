@@ -1,0 +1,11 @@
+# Hotplug script for ME909s-120 modem, service provider disconnect
+# 2022-10-22 mrhaav
+#
+
+modemStatus=$(cat /var/modem.status)
+[ "${ACTION}" = "ifdown" -a "${INTERFACE}" = "wwan" -a ${modemStatus} = "OK" ] && {
+	logger -t me909s -p 3 Modem disconnected
+	DEV=$(uci get network.wwan.ttyDEV)
+	atOut=$(COMMAND="AT^NDISDUP=1,1" gcom -d "$DEV" -s /etc/gcom/getrun_at.gcom | grep IPV4 | sed -e 's/[\r\n]//g')
+	[ "$atOut" = '^NDISSTAT: 1,,,"IPV4"' ] && logger -t me909s Modem re-connected || /etc/init.d/me909s restart
+}
