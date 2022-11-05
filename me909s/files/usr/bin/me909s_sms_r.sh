@@ -4,7 +4,8 @@
 
 # SMS rules
 DEV=$(uci get network.wwan.ttyDEV)
-updateFirewall() {
+
+updateFirewall() {
 	action=$(echo "$1" | sed -n '1p' | sed -e 's/[\r\n]//g')
 	IPaddress=$(echo "$1" | sed -n '2p' | sed -e 's/[\r\n]//g')
 	logger -t mem909s_r $action $IPaddress
@@ -187,5 +188,5 @@ case $sender in
 		bagaAlarm "$SMStext"
 		;;
 	* )
-		failedSMS="+46708331512"$'\n'"from: ${sender} ${dateTime}"$'\n'${SMStext}		/usr/bin/me909s_sms_t.sh "$failedSMS"		;;
+		failedSMS="+46708331512"$'\n'"from: ${sender} ${dateTime}"$'\n'${SMStext}		/usr/bin/me909s_sms_t.sh "$failedSMS"		;;
 esac

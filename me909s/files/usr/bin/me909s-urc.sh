@@ -9,7 +9,7 @@ URCdev=$(uci get network.wwan.ttyURC)
 # Disable unsolicted indications
 atOut=$(COMMAND="AT^CURC=0" gcom -d "$URCdev" -s /etc/gcom/run_at.gcom)
 
-# SMS in test format
+# SMS in text format
 atOut=$(COMMAND="AT+CMGF=1" gcom -d "$URCdev" -s /etc/gcom/run_at.gcom)
 
 # Enable New Message Indications to TE
