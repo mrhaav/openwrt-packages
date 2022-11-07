@@ -9,7 +9,7 @@ failedFolder=/var/sms/failed
 mkdir -p $failedFolder
 smsOK=true
 
-Bnumber=$(echo "$1" | sed -n '1p' $1)
+Bnumber=$(echo "$1" | sed -n '1p')
 SMStext=$(echo "$1" | sed -n '2,$p')
 while [ -n "$SMStext" ]
 do
