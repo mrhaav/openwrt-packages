@@ -11,7 +11,9 @@ then
 	modemUSBport=$(dmesg | grep 'GSM modem' | grep 'usb ' | awk 'NR==1' | awk -F 'ttyUSB' '{print $NF}')
 	DEV='/dev/ttyUSB'$modemUSBport
 	uci set network.wwan.ttyDEV=$DEV
+	uci set network.wwan.ttyURC='/dev/ttyUSB'$(($modemUSBport+2))
 	uci commit network
+	/ect/init.s/me909s_sms restart
 fi
 
 modemInit=$(cat /var/modem.status 2>null)
