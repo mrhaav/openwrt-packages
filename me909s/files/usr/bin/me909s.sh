@@ -13,7 +13,7 @@ then
 	uci set network.wwan.ttyDEV=$DEV
 	uci set network.wwan.ttyURC='/dev/ttyUSB'$(($modemUSBport+2))
 	uci commit network
-	/ect/init.s/me909s_sms restart
+	/ect/init.d/me909s_sms restart
 fi
 
 modemInit=$(cat /var/modem.status 2>null)
