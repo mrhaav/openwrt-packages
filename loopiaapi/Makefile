@@ -56,8 +56,8 @@ define Package/loopiaapi/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) ./files/usr/bin/loopiaapi $(1)/usr/bin
 
-	$(INSTALL_DIR) $(1)/etc
-	$(INSTALL_BIN) ./files/etc/udhcpc.user $(1)/etc
+	$(INSTALL_DIR) $(1)/var
+	$(INSTALL_BIN) ./files/etc/udhcpc.user $(1)/var
 
 	$(INSTALL_DIR) $(1)/etc/hotplug.d/iface
 	$(INSTALL_DATA) ./files/etc/hotplug.d/iface/90-loopia $(1)/etc/hotplug.d/iface
