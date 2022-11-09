@@ -30,7 +30,7 @@ updateFirewall() {
 		uci add_list firewall.openVPN.src_ip=$IPaddress
 		uci set firewall.openVPN.enabled=1
 # RDP
-		uci set firewall.RPD.src_ip=$IPaddress
+		uci set firewall.RDP.src_ip=$IPaddress
 		uci set firewall.RDP.enabled=1
 		uci commit firewall
 	elif [ "$action" = 'Close' ]
@@ -139,28 +139,28 @@ bagaAlarm() {
 			;;
 	esac
 	
-	mosquitto_pub -h 192.168.7.99 -t Arholma/Baga/$postTopic -m $mqttMessage
+	mosquitto_pub -h ip.ginstmark.se -t Arholma/Baga/$postTopic -m $mqttMessage
 	
 	if [ $postTopic == 'Alarm' ]
 	then
-		randomSMS=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 3)
-		echo '+46708331512' > /var/sms/Baga$randomSMS
-		echo 'Baga '$(echo $mqttMessage | jq -r .alarmName) >> /var/sms/Baga$randomSMS
-		echo $(echo $mqttMessage | jq -r .alarmStatus)' '$(echo $mqttMessage | jq -r .dateTime) >> /var/sms/Baga$randomSMS
-		mv /var/sms/Baga$randomSMS /var/spool/send/Baga$randomSMS
+		BagaSMS="+46708331512"$'\n'"Baga "$(echo $mqttMessage | jq -r .alarmName)$'\n'$(echo $mqttMessage | jq -r .alarmStatus)' '$(echo $mqttMessage | jq -r .dateTime)
+		/urs/bin/me909s_sms_t "$BagaSMS"
+	fi
+
+	if [ $postTopic == 'Status' ]
+	then
+		/etc/henrik/bagadata.sh $mqttMessage
 	fi
 
 }
 
 
 # Main
-# Allowed receivers
-
+# Read SMS
 SMSindex=$(echo $1 | awk -F ',' '{print $2}')
-
 atOut=$(COMMAND="AT+CMGR=${SMSindex}" gcom -d "$DEV" -s /etc/gcom/getrun_at.gcom)
 
-dateTime=20$(echo "$atOut" | grep CMGR: | awk -F '"' '{print $6}' | awk -F '+' '{print $1}' | sed -e 's/\///g' | sed -e 's/,/T/g' | sed -e 's/://g')
+dateTime=20$(echo "$atOut" | grep CMGR: | awk -F '"' '{print $6}' | awk -F '+' '{print $1}' | sed -e 's/\//-/g' | sed -e 's/,/_/g')
 sender=$(echo "$atOut" | grep CMGR: | awk -F '"' '{print $4}')
 logger -t me909s_r -p 6 SMS received from $sender
 SMSlines=$(echo "$atOut" | wc -l)
@@ -180,6 +180,7 @@ done
 
 atOut=$(COMMAND="AT+CMGD=$SMSindex" gcom -d "$DEV" -s /etc/gcom/run_at.gcom)
 
+# Allowed receivers
 case $sender in
 	'+46708331512' )
 		updateFirewall "$SMStext"
@@ -188,5 +189,7 @@ case $sender in
 		bagaAlarm "$SMStext"
 		;;
 	* )
-		failedSMS="+46708331512"$'\n'"from: ${sender} ${dateTime}"$'\n'${SMStext}		/usr/bin/me909s_sms_t.sh "$failedSMS"		;;
+		failedSMS="+46708331512"$'\n'"from: ${sender} ${dateTime}"$'\n'${SMStext}
+		/usr/bin/me909s_sms_t.sh "$failedSMS"
+		;;
 esac
