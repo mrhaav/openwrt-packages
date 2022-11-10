@@ -179,8 +179,7 @@ then
     subdomain=@
 fi
 
-nsIP=$(nslookup $full_domain | grep 'Address 1:')
-nsIP=$(echo ${nsIP#'Address 1: '})
+nsIP=$(nslookup $full_domain | grep 'Address:' | sed -n '2p' | awk -F ' ' '{print $2}')
 
 checkForcedUpdate=$(forcedUpdate up_stat_$subdomain.xml)
 
