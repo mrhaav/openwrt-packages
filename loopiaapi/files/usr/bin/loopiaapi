@@ -199,7 +199,7 @@ then
                 logger -t loopiaAPI $full_domain' update '$dnsIP' -> '$2 $updateStatus' Forced: '$checkForcedUpdate
             fi
         else
-            logger -t loopiaAPI $1' Sub DNS not updated yet '$newIP' != '$nsIP
+            logger -t loopiaAPI 'Local DNS not updated yet for '$full_domain
         fi
     fi
 # else
