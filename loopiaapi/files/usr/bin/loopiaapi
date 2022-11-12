@@ -16,14 +16,9 @@
 interface=${1//./_}
 full_domain=$(uci get ddns.loopiaapi.${interface} 2>/dev/null)
 
-if [ "$full_domain" = 'noDDNS' ]
-then
-        return 1
-fi
-
 if [ -z "$full_domain" ]
 then
-	logger -t loopiaAPI -p 3 'Domain name missing to interface: '$1
+#	logger -t loopiaAPI -p 3 'Domain name missing to interface: '$1
 	return 1
 fi
 
