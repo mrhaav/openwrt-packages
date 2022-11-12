@@ -60,8 +60,6 @@ Add APN setting and USB device number:
 ```
 uci set network.wwan.apn=internet
 uci set network.wwan.pdp_type=IP
-uci set network.wwan.ttyUSB=/dev/ttyUSB0
-uci set network.wwan.ttyURC=/dev/ttyUSB2
 uci commit network
 ```
 Reboot router\
@@ -70,7 +68,7 @@ PKG_RELEASE:=0.3\
 PKG_VERSION:=2022-11-05
 - hotplug script for re-connect network initiated disconnects
 - Event based SMS receiver. Make your own roles in `/usr/bin/me909s_sms_r.sh`
-- SMS sender. `/usr/bin/me909s_sms_t.sh Bnumber'\n'SMStext`
+- SMS sender. `/usr/bin/me909s_sms_t.sh Bnumber$'\n'SMStext`
 
 
 Packages dependencies:\
