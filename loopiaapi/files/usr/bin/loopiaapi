@@ -18,7 +18,7 @@ full_domain=$(uci get ddns.loopiaapi.${interface} 2>/dev/null)
 
 if [ -z "$full_domain" ]
 then
-#	logger -t loopiaAPI -p 3 'Domain name missing to interface: '$1
+#	logger -t loopia_ddns -p 3 'Domain name missing to interface: '$1
 	return 1
 fi
 
@@ -28,14 +28,14 @@ password=$(uci get ddns.loopiaapi.password 2>/dev/null)
 # Check username and password
 if [ -z "$username" ] || [ -z "$password" ]
 then
-	logger -t loopiaAPI -p 3 'Username or password missing'
+	logger -t loopia_ddns -p 3 'Username or password missing'
 	return 1
 fi
 
 # Check IPaddress
 if [ -z "$2" ]
 then
-        logger -t loopiaAPI -p 3 'IPaddress is missing to interface: '$1
+        logger -t loopia_ddns -p 3 'IPaddress is missing to interface: '$1
         return 1
 fi
 
@@ -79,13 +79,13 @@ then
     errorCode=$(xmllint --xpath 'string(//value/array/data/value/string)' $tempFolder/$1)
     case "$errorCode" in
     "")
-        logger -t loopiaAPI -p 3 'Loopia response: Check sub domain name <'$subdomain'>' ;;
+        logger -t loopia_ddns -p 3 'Loopia response: Check sub domain name <'$subdomain'>' ;;
     "AUTH_ERROR")
-        logger -t loopiaAPI -p 3 'Loopia response: Check username and password' ;;
+        logger -t loopia_ddns -p 3 'Loopia response: Check username and password' ;;
     "UNKNOWN_ERROR")
-        logger -t loopiaAPI -p 3 'Loopia response: Ckeck domain name <'$domain'>' ;;
+        logger -t loopia_ddns -p 3 'Loopia response: Ckeck domain name <'$domain'>' ;;
     *)
-        logger -t loopiaAPI -p 3 'Loopia response: '$errorCode. ;;
+        logger -t loopia_ddns -p 3 'Loopia response: '$errorCode. ;;
     esac
     echo nOK
 else
@@ -141,7 +141,7 @@ then
 
     xmllint --xpath 'string(//value/string)' $tempFolder/up_stat_$subdomain.xml
 else
-    logger -t loopiaAPI -p 3 No DNS A record found
+    logger -t loopia_ddns -p 3 No DNS A record found
     echo noA
 fi
 }
@@ -195,14 +195,14 @@ then
             updateStatus=$(updateDNS)
             if [ $updateStatus != 'OK' ]
             then
-                logger -t loopiaAPI -p 3 $1' DNS update went wrong:' $updateStatus
+                logger -t loopia_ddns -p 3 $1' DNS update went wrong:' $updateStatus
             else
-                logger -t loopiaAPI $full_domain' update '$dnsIP' -> '$2 $updateStatus' Forced: '$checkForcedUpdate
+                logger -t loopia_ddns $full_domain' update '$dnsIP' -> '$2 $updateStatus' Forced: '$checkForcedUpdate
             fi
         else
-            logger -t loopiaAPI 'Local DNS not updated yet for '$full_domain
+            logger -t loopia_ddns 'Local DNS not updated yet for '$full_domain
         fi
     fi
 # else
-#    logger -t loopiaAPI $full_domain' is up to date'
+#    logger -t loopia_ddns $full_domain' is up to date'
 fi
