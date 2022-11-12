@@ -60,6 +60,7 @@ Add APN setting and USB device number:
 ```
 uci set network.wwan.apn=internet
 uci set network.wwan.pdp_type=IP
+uci set network.wwan.pincode=1234
 uci commit network
 ```
 Reboot router\
