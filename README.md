@@ -16,7 +16,7 @@ Hotplug script for updating Loopia DNS via LoopiaAPI, https://www.loopia.com/api
 LoopiaAPI is triggered from `etc/udhcpc.user` and `etc/hotplug.d/iface/90-loopia`. `udhcpc.user` is triggered when the DHCP client is updating the IP-address and `90-loopia` is triggered when an interface is updated with ip address and route. `90-loopia` could be usefull for LTE modem if they doesn´t support DCHP.\
 Messages are written to System Log.\
 You need to add\
-```[ ! -z ${ip} ] && loopiaapi ${INTERFACE} ${ip}```
+`[ ! -z ${ip} ] && loopiaapi ${INTERFACE} ${ip}`\
 to `etc/udhcpc.user`.
 \
 You need to configure your Loopia API username and password and "connect" the interface to your domain name.
