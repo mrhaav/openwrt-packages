@@ -418,7 +418,7 @@ proto_qmi_setup() {
 		then
 			echo "Connected with IPv6"
 		fi
-	elif [ $pdptype_def = 'ipv6' ]
+	elif [ $pdptype = 'ipv6' ]
 	then
 		cid_6=$(uqmi -s -d "$device" --get-client-id wds)
 		uqmi -s -d "$device" --set-client-id wds,"$cid_6" --set-ip-family ipv6
