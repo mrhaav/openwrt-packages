@@ -126,7 +126,7 @@ static const char *encode8decode7 (char encode8str[])
 	char decode7[8];
 	int i = 0;
 
-	for(int n=strlen(encode8str)-1;n>=0;n--) {
+	for(int n=0; n<strlen(encode8str); n++) {
 		int dec_of_char = encode8str[n];
 		if (dec_of_char < 0)
 			dec_of_char = dec_of_char + 256;
