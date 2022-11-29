@@ -120,30 +120,40 @@ static int bin2ascii (char binary7[8])
 
 static const char *encode8decode7 (char encode8str[])
 {
-	char bin_str[80];
-	static char decode7out[10];
+	char bin_str[16];
+	char new_bin[16];
+	static char decode7out[30];
 	char decode7[8];
+	int i = 0;
 
 	for(int n=strlen(encode8str)-1;n>=0;n--) {
 		int dec_of_char = encode8str[n];
 		if (dec_of_char < 0)
 			dec_of_char = dec_of_char + 256;
-		if (strlen(encode8str) - n == 1 ) {
-			strcpy(bin_str, dec2bin (dec_of_char));
+		strcpy(new_bin, dec2bin (dec_of_char));
+		if (n > 0 ) {
+			strcat(new_bin, bin_str);
+			strcpy(bin_str, new_bin);
 		} else {
-			strcat(bin_str, dec2bin (dec_of_char));
+			strcpy(bin_str, new_bin);
 		}
-	}
-	int bin_len=strlen(bin_str);
-	for (int i=1;i<=bin_len/7;i++) {
-		for (int x=0;x<7;x++)
-			decode7[x] = bin_str[bin_len-i*7+x];
-		if (i < bin_len/7) {
-			decode7out[i-1] = bin2ascii(decode7);
-		} else {
-			if (strcmp(decode7, "0000000") != 0)
-				decode7out[i-1] = bin2ascii(decode7);
+		do {
+			int bin_len = strlen(bin_str);
+			for (int x=1;x<8;x++)
+				decode7[7-x] = bin_str[bin_len-x];
+			if (n < strlen(encode8str)-1) {
+				decode7out[i] = bin2ascii(decode7);
+			} else {
+				if (strcmp(decode7, "0000000") != 0)
+					decode7out[i] = bin2ascii(decode7);
+			}
+			i++;
+			int rem_len = strlen(bin_str)-7;
+			if (rem_len < 0)
+				rem_len = 0;
+			bin_str[rem_len] ='\0';
 		}
+		while (strlen(bin_str) >= 7);
 	}
 	return decode7out;
 }
@@ -994,7 +1004,7 @@ cmd_nas_get_serving_system_cb(struct qmi_dev *qmi, struct qmi_request *req, stru
 		[QMI_NAS_REGISTRATION_STATE_UNKNOWN] = "unknown",
 	};
 	void *c;
-	char plmn_desc[20];
+	char plmn_desc[28];
 
 	qmi_parse_nas_get_serving_system_response(msg, &res);
 
@@ -1010,10 +1020,12 @@ cmd_nas_get_serving_system_cb(struct qmi_dev *qmi, struct qmi_request *req, stru
 	if (res.set.current_plmn) {
                 if (res.data.current_plmn.description) {
 			strcpy(plmn_desc, res.data.current_plmn.description);
-			for (int i = 0;i<strlen(plmn_desc);i++) {
-				if (plmn_desc[i] < 32 || plmn_desc[i] > 126) {
-					strcpy(plmn_desc, encode8decode7(plmn_desc));
-					break;
+			if (strlen(plmn_desc) < 27) {
+				for (int i = 0;i<strlen(plmn_desc);i++) {
+					if (plmn_desc[i] < 32 || plmn_desc[i] > 126) {
+						strcpy(plmn_desc, encode8decode7(plmn_desc));
+						break;
+					}
 				}
 			}
                         blobmsg_add_string(&status, "plmn_description", plmn_desc);
