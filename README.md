@@ -108,6 +108,11 @@ Control utility for mobile broadband modems. Based on https://git.openwrt.org/pr
 This version use APN profiles. The default APN profile is verified before the modem goes online. If the default profile is not correct, the modem is set to Airplane mode on and the profile is corrected. Then the modem is set to Airplane mode off.\
 If PDP-type = IPv4v6, dual-stack will be activate.
 
+PKG_RELEASE:=0.10\
+PKG_VERSION:=2022-11-29
+- nas: Correction for long plmn_description in --get-serving-system
+- qmi.sh: Correction for IPv6 only setup
+
 PKG_RELEASE:=0.9\
 PKG_VERSION:=2022-09-13
 - wds: Added --delete-profile
