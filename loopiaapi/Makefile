@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
  
 PKG_NAME:=loopiaapi
-PKG_VERSION:=2021-12-29
+PKG_VERSION:=2022-11-12
 PKG_RELEASE:=0.8
 
 PKG_MAINTAINER:=Henrik Ginstmark <henrik@ginstmark.se>
