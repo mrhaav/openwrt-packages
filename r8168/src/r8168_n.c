@@ -29,7 +29,7 @@
 #         Act  Link1G  Link100M  Link10M
 # LED0   Bit3   Bit2    Bit1      Bit0  
 # LED1   Bit7   Bit6    Bit5      Bit4   
-# N/A    Bit11  Bit10   Bit9      Bit8
+# LED2   Bit11  Bit10   Bit9      Bit8
 # LED3   Bit15  Bit14   Bit13     Bit12
 #
 # For testing use 4021. This will give Link10M for LED0, Link100M for LED1 and Link1G for LED3.
@@ -24455,14 +24455,21 @@ rtl8168_init_software_variable(struct net_device *dev)
                 tp->NotWrMcuPatchCode = TRUE;
         }
         
-		/* Enable Custom LEDs, by mrhaav */
+        /* Enable Custom LEDs, by mrhaav */
         switch (tp->mcfg) {
         case CFG_METHOD_14:
         case CFG_METHOD_15:
-				rtl8168_enable_cfg9346_write(tp);
-				RTL_W8(tp, Config4, RTL_R8(tp, Config4) | CusLed_En);
-				RTL_W16(tp, CustomLED, 0x004f); //Value for customized LEDs
-				rtl8168_disable_cfg9346_write(tp);
+                rtl8168_enable_cfg9346_write(tp);
+                RTL_W8(tp, Config4, RTL_R8(tp, Config4) | CusLed_En);
+                RTL_W16(tp, CustomLED, 0x004f); //Value for customized LEDs
+                rtl8168_disable_cfg9346_write(tp);
+                break;
+        case CFG_METHOD_29:
+        case CFG_METHOD_30:
+                rtl8168_enable_cfg9346_write(tp);
+                RTL_W8(tp, Config4, RTL_R8(tp, Config4) | CusLed_En);
+                RTL_W16(tp, CustomLED, 0x004f); //Value for customized LEDs
+                rtl8168_disable_cfg9346_write(tp);
                 break;
         }
 
@@ -26124,14 +26131,14 @@ rtl8168_init_one(struct pci_dev *pdev,
 		/* added by mrhaav */
         printk(KERN_INFO "%s %s: Chipset %s\n",
                MODULENAME, dev->name, rtl_chip_info[tp->chipset].name);
-		if (RTL_R8(tp, Config4) & 0x40) {
-			printk(KERN_INFO "%s Custom LED function is enabled\n", MODULENAME);
-		}
-		else {
-			printk(KERN_INFO "%s Custom LED funtion is disabled\n", MODULENAME);
-		}
-		printk(KERN_INFO "%s Custom LED configuration 0x%04x\n", 
-			   MODULENAME, tp->NicCustLedValue);
+                if (RTL_R8(tp, Config4) & 0x40) {
+                        printk(KERN_INFO "%s Custom LED function is enabled\n", MODULENAME);
+                }
+                else {
+                        printk(KERN_INFO "%s Custom LED funtion is disabled\n", MODULENAME);
+                }
+                printk(KERN_INFO "%s LED configuration 0x%04x\n", 
+                       MODULENAME, tp->NicCustLedValue);
 
 
 out:
