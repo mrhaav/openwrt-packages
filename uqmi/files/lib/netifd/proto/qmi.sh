@@ -388,7 +388,7 @@ proto_qmi_setup() {
 						--profile $default_profile)
 		if [ "$pdh_4" = '"Call failed"' ]
 		then
-			echo "Unable to connect with ipv4, check APN settnings"
+			echo "Unable to connect with ipv4, check APN settings"
 			proto_notify_error "$interface" IPV4_APN_ERROR
 			proto_block_restart "$interface"
 			return 1
