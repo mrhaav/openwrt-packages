@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=uqmi
-PKG_RELEASE:=0.10
+PKG_RELEASE:=0.11
 PKG_VERSION:=2022-11-29
 
 # PKG_SOURCE_PROTO:=git
@@ -34,8 +34,12 @@ define Package/uqmi/description
   the QMI-protocol.
 endef
 
-TARGET_CFLAGS += \
-	-I$(STAGING_DIR)/usr/include -ffunction-sections -fdata-sections
+ TARGET_CFLAGS += \
++       -I$(STAGING_DIR)/usr/include \
++       -ffunction-sections \
++       -fdata-sections \
++       -Wno-error=dangling-pointer \
++       -Wno-error=maybe-uninitialized
 
 TARGET_LDFLAGS += -Wl,--gc-sections
 
