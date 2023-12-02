@@ -119,7 +119,7 @@ PKG_VERSION:=2022-11-29
 
 PKG_RELEASE:=0.9\
 PKG_VERSION:=2022-09-13
-- wds: Added --delete-profile
+- wds: Added --delete-profile  *Included in uqmi.git 2023-10-18*
 - qmi.sh: raw-ip is the default data format
 - qmi.sh: If you need a different IPv6 APN to activate dual-stack, define the APN in Luci as IPv4 and configure manually the IPv6 profile with uqmi --create-profile/--modify-profile. Add the IPv6 profile number with:
 ```
@@ -181,9 +181,9 @@ PKG_VERSION:=2021-12-22
 - qmi.sh: Support for dual-stack. PDP Type = IPv4v6 will use IPv4 for default connection and IPv6 for secondary connection. PLMN configuration not supported.
 
 - nas: Added support for three digit MNC even if the value is less then 100. MNC = 008 will be a three-digit and 08 will be a two-digit MNC.
-- wds: Added command: --create-profile
+- wds: Added command: --create-profile *Included in uqmi.git 2023-10-18*
 - nas: Added decoding of lte_system_info_v2.cid and intrafrequency_lte_info_v2.global_cell_id to enodeb_id and cell_id and decoding of wcdma_system_info_v2.cid to rnc_id and cell_id. Change order to mcc-mnc-tac/lac-enodeb_id/rnc_id-cell_id. *Included in uqmi.git 2022-05-04*
-- wds: Added command: --get-default-profile-number, --get-profile-settings, --modify-profile
+- wds: Added command: --get-default-profile-number, --get-profile-settings, --modify-profile  *Included in uqmi.git 2023-10-18*
 - dms: Added command: --get-device-operating-mode *Included in uqmi.git 2022-02-22*
 
 
