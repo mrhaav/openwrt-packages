@@ -98,6 +98,7 @@ proto_atc_init_config() {
 	available=1
 	proto_config_add_string "device:device"
 	proto_config_add_string "apn"
+	proto_config_add_string "pincode"
 	proto_config_add_string "pdp"
 	proto_config_add_string "auth"
 	proto_config_add_string "username"
@@ -158,14 +159,14 @@ proto_atc_setup () {
 			echo SIMcard ready
 			;;
 		SIMPIN )
-			if [ -z $PINcode ]
+			if [ -z "$pincode" ]
 			then
 				echo PINcode required but missing
 				proto_notify_error "$interface" PINmissing
 				proto_block_restart "$interface"
 				return 1
 			fi
-			atOut=$(COMMAND="AT+CPIN=${PINcode}" gcom -d "$device" -s /etc/gcom/getrun_at.gcom | grep 'CME ERROR:')
+			atOut=$(COMMAND="AT+CPIN=${pincode}" gcom -d "$device" -s /etc/gcom/getrun_at.gcom | grep 'CME ERROR:')
 			if [ -n "$atOut" ]
 			then
 				echo PINcode error: ${atOut:11}
