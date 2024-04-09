@@ -3,10 +3,11 @@
 Add feed to feeds.conf.default: `src-git mrhaav https://github.com/mrhaav/openwrt-packages.git`\
 \
 \
-**atc-**
+**atc**
 
 AT command protocol. Event based and utilize the unsolicited result codes, URCs. Handdles network disconnections.\
-Luci-app available at luci - protocols - luci-proto-atc
+Luci-app available at luci - protocols - luci-proto-atc.\
+More infomation about the supported modems, https://github.com/mrhaav/openwrt/tree/master/atc\
 \
 \
 **leds-apu1**
