@@ -5,7 +5,8 @@ Add feed to feeds.conf.default: `src-git mrhaav https://github.com/mrhaav/openwr
 \
 **atc**
 
-AT command protocol. Event based and utilize the unsolicited result codes, URCs. Handdles network disconnections.\
+AT command protocol.\
+Event based and utilize the unsolicited result codes, URCs. Re-connect on network initiated disconnections.\
 Luci-app available at luci - protocols - luci-proto-atc.\
 More infomation about the supported modems, https://github.com/mrhaav/openwrt/tree/master/atc
 \
