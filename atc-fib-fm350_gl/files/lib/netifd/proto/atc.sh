@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # AT commands for Fibocom FM350-GL modem
-# 2024-04-04 by mrhaav
+# 2024-04-24 by mrhaav
 #
 
 
@@ -85,13 +85,13 @@ subnet_calc () {
 IPversion () {
 
     local addr
-	local version=NULL
-	
-	addr=$(echo $1 | tr -c -d '.' | wc -c)
-	[ $addr -eq 3 ] && version='IPv4'
-	[ $addr -eq 15 ] && version='IPv6'
-	
-	echo $version
+    local version=NULL
+
+    addr=$(echo $1 | tr -c -d '.' | wc -c)
+    [ $addr -eq 3 ] && version='IPv4'
+    [ $addr -eq 15 ] && version='IPv6'
+
+    echo $version
 }
 
 IPv6_decTOhex () {
@@ -146,6 +146,32 @@ CxREG () {
     echo $reg_string
 }
 
+ucs2TOascii () {
+    local ucs2_string=$1
+    local ascii_string=''
+    local x=0
+    local ucs2_char ucs2_len
+
+    ucs2_len=$((${#ucs2_string}/4*4))
+
+    while [ $x -lt $ucs2_len ]
+    do
+        ucs2_char=$(echo ${ucs2_string:$x:4})
+        [ ${ucs2_char::2} = '00' ] && {
+            [ ${ucs2_char: -2} = '0A' ] && {
+                ascii_string=$ascii_string'\n'
+            } || {
+                ascii_string=$ascii_string$(printf "\\x${ucs2_char: -2}")
+            }
+        } || {
+            ascii_string=$ascii_string'\u'$ucs2_char
+        }
+        x=$(($x+4))
+    done
+    
+    echo $ascii_string
+}
+
 proto_atc_init_config() {
     no_device=1
     available=1
@@ -163,12 +189,16 @@ proto_atc_init_config() {
 
 proto_atc_setup () {
     local interface="$1"
+    local sms_rx_folder=/var/sms/rx
     local OK_received=0
     local dual_stack=0
     local re_connect=0
-    local dns1 dns2 rat new_rat ifname plmn cops_format tatus pdp_active
+    local pdp_still_active=0
+    local dns1 dns2 rat new_rat ifname plmn cops_format status sms_index sms_text sms_sender sms_date
     local devname devpath device apn pdp pincode auth username password delay atc_debug $PROTO_DEFAULT_OPTIONS
     json_get_vars device ifname apn pdp pincode auth username password delay atc_debug $PROTO_DEFAULT_OPTIONS
+
+    mkdir -p $sms_rx_folder
 
     [ -n "$delay" ] && sleep "$delay" || sleep 1
 
@@ -285,7 +315,15 @@ proto_atc_setup () {
     [ "$atOut" != 'OK' ] && echo $atOut
 
 # Timezone reporting
-    atOut=$(COMMAND='AT+CTZR=2' gcom -d "$device" -s /etc/gcom/run_at.gcom)
+    atOut=$(COMMAND='AT+CTZR=1' gcom -d "$device" -s /etc/gcom/run_at.gcom)
+    [ "$atOut" != 'OK' ] && echo $atOut
+
+# SMS config
+    atOut=$(COMMAND='AT+CMGF=1' gcom -d "$device" -s /etc/gcom/run_at.gcom)
+    [ "$atOut" != 'OK' ] && echo $atOut
+    atOut=$(COMMAND='AT+CSCS="UCS2"' gcom -d "$device" -s /etc/gcom/run_at.gcom)
+    [ "$atOut" != 'OK' ] && echo $atOut
+    atOut=$(COMMAND='AT+CNMI=2,1' gcom -d "$device" -s /etc/gcom/run_at.gcom)
     [ "$atOut" != 'OK' ] && echo $atOut
 
 # Disable flightmode
@@ -444,11 +482,12 @@ proto_atc_setup () {
                     OK_received=6
                     ;;
 
-                +CTZE )
+                +CTZV )
                     [ "$atc_debug" -gt 1 ] && echo $URCline
                     [ $re_connect -eq 0 ] && {
                         re_connect=1
                     } || {
+                        pdp_still_active=0
                         COMMAND='AT+CGACT?' gcom -d "$device" -s /etc/gcom/at.gcom
                         OK_received=10
                     }
@@ -456,27 +495,45 @@ proto_atc_setup () {
 
                 +CGACT )
                     [ "$atc_debug" -gt 1 ] && echo $URCline
-                    pdp_active=$(echo $URCvalue | awk -F ',' '{print $2}')
-                    [ $pdp_active -eq 0 ] && OK_received=10
+                    pdp_still_active=$(echo $URCvalue | awk -F ',' '{print $2}')
                     ;;
 
                 '+CME ERROR' )
                     [ "$atc_debug" -gt 1 ] && echo $URCline
                     [ $OK_received -eq 3 ] && {
                         echo 'Activate session failed, check your APN settings'
-                        proto_notify_error "$interface" APN_FAILED
+                        proto_notify_error "$interface" SESSION_FAILED
                         proto_block_restart "$interface"
                         return 1
                     }
                     ;;
 
+                +CMTI )
+                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    sms_index=$(echo $URCvalue | awk -F ',' '{print $2}')
+                    COMMAND='AT+CMGR='$sms_index gcom -d "$device" -s /etc/gcom/at.gcom
+                    ;;
+
+                +CMGR )
+                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    sms_sender=$(echo $URCvalue | awk -F ',' '{print $2}')
+                    sms_date=$(echo $URCvalue | awk -F ',' '{print $4}')
+                    sms_date=$(echo $sms_date | awk -F '/' '{print $1 $2 $3}' | sed -e 's/ /_/g' | sed -e 's/://g')
+                    sms_date=${sms_date:: -3}
+                    OK_received=11
+                    ;;
+
                 OK )
                     [ "$atc_debug" -gt 1 ] && echo $URCline
-                    [ $OK_received -eq 10 ] && {
+                    [ $OK_received -eq 11 ] && {
+                        COMMAND='AT+CMGD='$sms_index gcom -d "$device" -s /etc/gcom/at.gcom
+                        OK_received=6
+                    }
+                    [ $OK_received -eq 10 -a $pdp_still_active -eq 0 ] && {
                         echo 'Session diconnected by the network'
                         release_interface
+                        echo 'Activate session'
                         COMMAND='AT+CGACT=1,1' gcom -d "$device" -s /etc/gcom/at.gcom
-                        OK_received=4
                     }
                     [ $OK_received -eq 5 ] && {
                         COMMAND='AT+GTDNS=1' gcom -d "$device" -s /etc/gcom/at.gcom
@@ -498,6 +555,14 @@ proto_atc_setup () {
 
                 * )
                     [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ $OK_received -eq 11 ] && {
+                        sms_text=$URCline
+                        sms_text=$(ucs2TOascii $sms_text)
+                        echo 'SMS recieved from '$sms_sender
+                        echo $sms_sender > $sms_rx_folder'/sms_'$sms_date
+                        echo -e $sms_text >> $sms_rx_folder'/sms_'$sms_date
+                        /usr/bin/atc_rx_sms.sh $sms_rx_folder'/sms_'$sms_date 2> /dev/null
+                    }
                     ;;
             esac
         fi
