@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
  
 PKG_NAME:=atc-mik-r11e_lte
-PKG_VERSION:=2023-08-27
+PKG_VERSION:=2024-06-05
 PKG_RELEASE:=0.1
 
 PKG_MAINTAINER:=Henrik Ginstmark <henrik@ginstmark.se>
