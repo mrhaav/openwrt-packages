@@ -139,10 +139,10 @@ CxREG () {
     rat=$(nb_rat $rat)
     reject_cause=$(echo $reg_string | awk -F ',' '{print $6}')
     [ "$rat" = 'WCDMA' ] && {
-        reg_string='RNCid: '$(printf '%d' 0x${g_cell_id:: -4})' LAC: '$(printf '%d' 0x$lac_tac)' CellId: '$(printf '%d' 0x${g_cell_id: -4})
+        reg_string='RNCid: '$(printf '%d' 0x${g_cell_id:: -4})' LAC:'$(printf '%d' 0x$lac_tac)' CellId:'$(printf '%d' 0x${g_cell_id: -4})
     }
     [ "${rat::3}" = 'LTE' ] && {
-        reg_string='TAC: '$(printf '%d' 0x$lac_tac)' eNodeB: '$(printf '%d' 0x${g_cell_id:: -2})'-'$(printf '%d' 0x${g_cell_id: -2})
+        reg_string='TAC:'$(printf '%d' 0x$lac_tac)' eNodeB:'$(printf '%d' 0x${g_cell_id:: -2})'-'$(printf '%d' 0x${g_cell_id: -2})
     }
     [ "$reject_cause" -gt 0 ] && reg_string=$reg_string' - Reject cause: '$reject_cause
 
