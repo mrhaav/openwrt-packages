@@ -48,9 +48,6 @@ define Package/$(PKG_NAME)/install
 
 	$(INSTALL_DIR) $(1)/etc/gcom
 	$(INSTALL_DATA) ./files/etc/gcom/* $(1)/etc/gcom
-
-	$(INSTALL_DIR) $(1)/etc/hotplug.d/usb
-	$(INSTALL_DATA) ./files/etc/hotplug.d/usb/* $(1)/etc/hotplug.d/usb
 endef
  
 $(eval $(call BuildPackage,$(PKG_NAME)))
