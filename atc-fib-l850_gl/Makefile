@@ -33,15 +33,6 @@ endef
 define Build/Compile
 endef
 
-define Package/$(PKG_NAME)/preinst
-#!/bin/sh
-if [ ! -d /etc/hotplug.d/usb ]
-then
-     mkdir /etc/hotplug.d/usb
-fi
-exit 0
-endef
-
 define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/lib/netifd/proto
 	$(INSTALL_BIN) ./files/lib/netifd/proto/atc.sh $(1)/lib/netifd/proto
