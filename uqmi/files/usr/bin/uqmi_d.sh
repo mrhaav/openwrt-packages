@@ -201,6 +201,7 @@ do
 			json_get_var concat_part concat_part
 			json_get_var concat_parts concat_parts
 			json_get_var text text
+   			json_get_var ucs2 ucs-2
 			timestamp=$(echo $timestamp | sed -e 's/-//g' | sed -e 's/://g' | sed -e 's/ /T/g')
 			if [ -n "$concat_ref" ]
 			then
@@ -209,7 +210,14 @@ do
 				sms_file=sms_${timestamp}
 			fi
 			echo "$sender" > $receiveFolder/$sms_file
-			echo "$text" >> $receiveFolder/$sms_file
+			if [ -n "$text" ]
+   			then
+				echo "$text" >> $receiveFolder/$sms_file
+			fi
+			if [ -n "$ucs2" ]
+			then
+				echo '"'$ucs2'"' | sed 's/\([0-9A-F]\{4\}\)/\\\u\1/gI' | jsonfilter -e '@' >> $receiveFolder/$sms_file
+			fi
 			logger -t uqmi_d SMS received from $sender
 			/usr/bin/uqmi_sms.sh $receiveFolder/${sms_file} 2> /dev/null
 			uqmi -d $device --delete-message $messageID --storage $storage
