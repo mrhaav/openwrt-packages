@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # AT commands for Fibocom FM350-GL modem
-# 2024-06-15 by mrhaav
+# 2024-08-04 by mrhaav
 #
 
 
@@ -197,6 +197,7 @@ proto_atc_setup () {
     local dual_stack=0
     local re_connect=0
     local pdp_still_active=0
+    local atOut manufactor model fw
     local dns1 dns2 rat new_rat ifname plmn cops_format status sms_index sms_text sms_sender sms_date
     local devname devpath device apn pdp pincode auth username password delay atc_debug $PROTO_DEFAULT_OPTIONS
     json_get_vars device ifname apn pdp pincode auth username password delay atc_debug $PROTO_DEFAULT_OPTIONS
@@ -280,20 +281,27 @@ proto_atc_setup () {
     atOut=$(COMMAND='AT+CFUN=4' gcom -d "$device" -s /etc/gcom/run_at.gcom)
     [ "$atOut" != 'OK' ] && echo $atOut
     conStatus=offline
-    echo Configure modem
 
 # Get modem manufactor and model
-    atOut=$(COMMAND='AT+CGMI' gcom -d "$device" -s /etc/gcom/getrun_at.gcom | sed -n '2p')
-    manufactor=$(echo $atOut | sed -e 's/"//g')
-    manufactor=$(echo $manufactor | sed -e 's/\r//g')
-    atOut=$(COMMAND='AT+CGMM' gcom -d "$device" -s /etc/gcom/getrun_at.gcom | sed -n '2p')
-    model=$(echo $atOut | sed -e 's/"//g')
-    model=$(echo $model | sed -e 's/\r//g')
-    [ "$manufactor" = 'Fibocom Wireless Inc.' -a "$model" = FM350-GL ] || {
-    echo Wrong script. This is optimized for: Fibocom Wireless Inc., FM350-GL
-    proto_notify_error "$interface" MODEM
-    proto_set_available "$interface" 0
+    atOut=$(COMMAND='ATI' gcom -d "$device" -s /etc/gcom/getrun_at.gcom)
+    manufactor=$(echo "$atOut" | grep Manufacturer | awk -F ':' '{print $2}' | sed -e 's/\r//g')
+    manufactor=${manufactor:1}
+    model=$(echo "$atOut" | grep Model | awk -F ':' '{print $2}' | sed -e 's/\r//g')
+    model=${model:1}
+    fw=$(echo "$atOut" | grep Revision | awk -F ':' '{print $2}' | sed -e 's/\r//g')
+    fw=${fw:1}
+    [ "$atc_debug" -gt 1 ] && {
+        echo $manufactor
+        echo $model
+        echo $fw
     }
+    [ "$manufactor" = 'Fibocom Wireless Inc.' -a "$model" = FM350-GL ] || {
+        echo 'Modem: '$manufactor' - '$model
+        echo 'Wrong script. This is optimized for: Fibocom Wireless Inc. - FM350-GL'
+        proto_notify_error "$interface" MODEM
+        proto_set_available "$interface" 0
+    }
+    echo Configure modem
 
 # URC, +CGREG, +CEREG and C5GREG
     atOut=$(COMMAND='AT+CREG=0' gcom -d "$device" -s /etc/gcom/run_at.gcom)
@@ -572,7 +580,10 @@ proto_atc_setup () {
 
 proto_atc_teardown() {
     local interface="$1"
+    local device=$(uci get network.${interface}.device)
+    local atOut
     echo $interface is disconnected
+    atOut=$(COMMAND='AT+CGACT=0,1' gcom -d "$device" -s /etc/gcom/run_at.gcom)
     proto_init_update "*" 0
     proto_send_update "$interface"
 }
