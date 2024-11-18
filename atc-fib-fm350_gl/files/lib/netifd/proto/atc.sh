@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # AT commands for Fibocom FM350-GL modem
-# 2024-08-04 by mrhaav
+# 2024-11-18 by mrhaav
 #
 
 
@@ -149,6 +149,18 @@ CxREG () {
     echo $reg_string
 }
 
+full_apn () {
+    local apn=$1
+    local rest
+
+    rest=$(echo ${apn#*'.mnc'})
+    rest=${#rest}
+    rest=$((rest+4))
+    [ $rest -lt ${#apn} ] && apn=${apn:: -$rest}
+
+    echo $apn
+}
+
 ucs2TOascii () {
     local ucs2_string=$1
     local ascii_string=''
@@ -197,14 +209,18 @@ proto_atc_setup () {
     local dual_stack=0
     local re_connect=0
     local pdp_still_active=0
-    local atOut manufactor model fw
+    local atOut manufactor model fw used_apn
     local dns1 dns2 rat new_rat ifname plmn cops_format status sms_index sms_text sms_sender sms_date
     local devname devpath device apn pdp pincode auth username password delay atc_debug $PROTO_DEFAULT_OPTIONS
     json_get_vars device ifname apn pdp pincode auth username password delay atc_debug $PROTO_DEFAULT_OPTIONS
 
     mkdir -p $sms_rx_folder
 
-    [ -n "$delay" ] && sleep "$delay" || sleep 1
+    [ -z "$delay" ] && delay=15
+    [ ! -f /var/fm350.status ] && {
+        echo 'Modem boot delay '$delay's'
+        sleep "$delay"
+    }
 
     [ -z $ifname ] && {
         devname=$(basename $device)
@@ -338,7 +354,7 @@ proto_atc_setup () {
 # Disable flightmode
     echo Activate modem
     COMMAND='AT+CFUN=1' gcom -d "$device" -s /etc/gcom/at.gcom
-    
+
     while read URCline
     do
         firstASCII=$(printf "%d" \'${URCline::1})
@@ -346,10 +362,9 @@ proto_atc_setup () {
         then
             URCcommand=$(echo $URCline | awk -F ':' '{print $1}')
             URCcommand=$(echo $URCcommand | sed -e 's/[\r\n]//g')
-            x=${#URCcommand}
-            x=$(($x+2))
-            URCvalue=${URCline:x}
+            URCvalue=$(echo $URCline | awk -F ':' '{print $2}')
             URCvalue=$(echo $URCvalue | sed -e 's/"//g' | sed -e 's/[\r\n]//g')
+            [ "${URCvalue::1}" = ' ' ] && ${URCvalue:1}
             case $URCcommand in
 
                 +CGREG|+CEREG )
@@ -441,7 +456,9 @@ proto_atc_setup () {
                             COMMAND='AT+CGACT?' gcom -d "$device" -s /etc/gcom/at.gcom
                             OK_received=10
                             ;;
-
+                        'ME PDN DEACT'* )
+                            OK_received=9
+                            ;;
                         'ME PDN ACT'* )
                             OK_received=2
                             ;;
@@ -468,32 +485,12 @@ proto_atc_setup () {
                     [ $re_connect -eq 0 ] && re_connect=1
                     ;;
 
-                +GTDNS )
+                +EONSNWNAME )
                     [ "$atc_debug" -gt 1 ] && echo $URCline
-                    URCvalue=$(echo $URCvalue | sed -e 's/"//g')
-                    dns1=$(echo $URCvalue | awk -F ',' '{print $2}')
-                    dns2=$(echo $URCvalue | awk -F ',' '{print $3}')
-                    [ $(IPversion $dns1) = 'IPv4' ] && {
-                        v4dns1=$dns1
-                        v4dns2=$dns2
+                    [ $re_connect -eq 0 ] && {
+                        COMMAND='AT+COPS=3,0;+COPS?;+COPS=3,2;+COPS?' gcom -d "$device" -s /etc/gcom/at.gcom
+                        re_connect=1
                     }
-                    [ $(IPversion $dns1) = 'IPv6' ] && {
-                        v6dns1=$(IPv6_decTOhex $dns1)
-                        v6dns2=$(IPv6_decTOhex $dns2)
-                    }
-                    [ $dual_stack != 1 ] && {
-                        proto_init_update "$ifname" 1
-                        proto_set_keep 1
-                        proto_add_data
-                        json_add_string "modem" "${model}"
-                        proto_close_data
-                        proto_send_update "$interface"
-                        [ -n "$v4address" ] && update_IPv4
-                        [ -n "$v6address" ] && update_DHCPv6
-                    } || {
-                        dual_stack=2
-                    }
-                    OK_received=4
                     ;;
 
                 +CTZV )
@@ -515,12 +512,47 @@ proto_atc_setup () {
 
                 '+CME ERROR' )
                     [ "$atc_debug" -gt 1 ] && echo $URCline
-                    [ $OK_received -eq 1 ] && {
+                    [ "$URCvalue" = '5847' ] && {
+                        COMMAND='AT+CGACT=1,1' gcom -d "$device" -s /etc/gcom/at.gcom
+                    }
+                    [ "$URCvalue" = 'Requested service option not subscribed (#33)' ] && {
                         echo 'Activate session failed, check your APN settings'
                         proto_notify_error "$interface" SESSION_FAILED
                         proto_block_restart "$interface"
                         return 1
                     }
+                    ;;
+
+                +CGCONTRDP )
+                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ -z "$used_apn" ] && {
+                        used_apn=$(echo $URCvalue | awk -F ',' '{print $3}')
+                        used_apn=$(full_apn $used_apn)
+                        [ "$apn" != $used_apn ] && echo 'Using network default APN: '$used_apn
+                    }
+                    dns1=$(echo $URCvalue | awk -F ',' '{print $6}')
+                    dns2=$(echo $URCvalue | awk -F ',' '{print $7}')
+                    [ $(IPversion $dns1) = 'IPv4' ] && {
+                        v4dns1=$dns1
+                        v4dns2=$dns2
+                    }
+                    [ $(IPversion $dns1) = 'IPv6' ] && {
+                        v6dns1=$(IPv6_decTOhex $dns1)
+                        v6dns2=$(IPv6_decTOhex $dns2)
+                    }
+                    [ $dual_stack != 1 ] && {
+                        proto_init_update "$ifname" 1
+                        proto_set_keep 1
+                        proto_add_data
+                        json_add_string "modem" "${model}"
+                        proto_close_data
+                        proto_send_update "$interface"
+                        [ -n "$v4address" ] && update_IPv4
+                        [ -n "$v6address" ] && update_DHCPv6
+                    } || {
+                        dual_stack=2
+                    }
+                    OK_received=4
                     ;;
 
                 +CMTI )
@@ -547,11 +579,15 @@ proto_atc_setup () {
                     [ $OK_received -eq 10 -a $pdp_still_active -eq 0 ] && {
                         echo 'Session diconnected by the network'
                         release_interface
+                        COMMAND='AT+CGACT=1,1' gcom -d "$device" -s /etc/gcom/at.gcom
+                        echo 'Activate session'
+                    }
+                    [ $OK_received -eq 9 -a $pdp_still_active -eq 0 ] && {
                         echo 'Activate session'
                         COMMAND='AT+CGACT=1,1' gcom -d "$device" -s /etc/gcom/at.gcom
                     }
                     [ $OK_received -eq 3 ] && {
-                        COMMAND='AT+GTDNS=1' gcom -d "$device" -s /etc/gcom/at.gcom
+                        COMMAND='AT+CGCONTRDP=1' gcom -d "$device" -s /etc/gcom/at.gcom
                     }
                     [ $OK_received -eq 2 ] && {
                         COMMAND='AT+CGPADDR=1' gcom -d "$device" -s /etc/gcom/at.gcom
