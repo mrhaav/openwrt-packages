@@ -6,7 +6,8 @@ include $(TOPDIR)/rules.mk
 
 LUCI_TITLE:=Support for AT-commands script, atc
 MAINTAINER:=Henrik Ginstmark <henrik@ginstmark.se>
-PKG_VERSION:=20230828-0.2
+PKG_VERSION:=2023.08.28
+PKG_RELEASE:=2
 
 include $(TOPDIR)/feeds/luci/luci.mk
 
