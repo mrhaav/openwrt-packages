@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # AT commands for Fibocom FM350-GL modem
-# 2024-11-18 by mrhaav
+# 2025-01-11 by mrhaav
 #
 
 
@@ -36,7 +36,7 @@ update_DHCPv6 () {
     json_add_string proto "dhcpv6"
     proto_add_dynamic_defaults
     json_add_string extendprefix 1
-    [ "$peerdns" = 0 ] || {
+    [ "$peerdns" = 0 -o "$v6dns_slaac" = 1 ] || {
         json_add_array dns
         json_add_string "" "$v6dns1"
         json_add_string "" "$v6dns2"
@@ -199,6 +199,7 @@ proto_atc_init_config() {
     proto_config_add_string "password"
     proto_config_add_string "atc_debug"
     proto_config_add_string "delay"
+    proto_config_add_string "v6dns_ra"
     proto_config_add_defaults
 }
 
@@ -206,13 +207,14 @@ proto_atc_setup () {
     local interface="$1"
     local sms_rx_folder=/var/sms/rx
     local OK_received=0
-    local dual_stack=0
     local re_connect=0
     local pdp_still_active=0
-    local atOut manufactor model fw used_apn
+    local atOut dual_stack manufactor model fw used_apn lines x at_line at_command
     local dns1 dns2 rat new_rat ifname plmn cops_format status sms_index sms_text sms_sender sms_date
     local devname devpath device apn pdp pincode auth username password delay atc_debug $PROTO_DEFAULT_OPTIONS
-    json_get_vars device ifname apn pdp pincode auth username password delay atc_debug $PROTO_DEFAULT_OPTIONS
+    json_get_vars device ifname apn pdp pincode auth username password delay atc_debug v6dns_ra $PROTO_DEFAULT_OPTIONS
+
+    local custom_at=$(uci get network.${interface}.custom_at 2>/dev/null)
 
     mkdir -p $sms_rx_folder
 
@@ -351,6 +353,28 @@ proto_atc_setup () {
     atOut=$(COMMAND='AT+CNMI=2,1' gcom -d "$device" -s /etc/gcom/run_at.gcom)
     [ "$atOut" != 'OK' ] && echo $atOut
 
+# Custom AT-commands
+    [ $(echo $custom_at | wc -w) -gt 0 ] && {
+        echo 'Running custom AT-commands'
+        for at_command in $custom_at
+        do
+            [ $(echo ${at_command::2} | awk '{print toupper($0)}') = 'AT' ] && {
+                echo $at_command
+                atOut=$(COMMAND=$at_command gcom -d "$device" -s /etc/gcom/getrun_at.gcom)
+                lines=$(echo "$atOut" | wc -l)
+                x=1
+                while [ $x -le $lines ]
+                do
+                    at_line=$(echo "$atOut" | sed -n $x'p' | sed -e 's/[\r\n]//g')
+                    [ $(echo ${#at_line}) -gt 0 -a "$at_line" != "$at_command" ] && echo ' '$at_line
+                    x=$((x+1))
+                done
+            } || {
+                echo 'Start custom AT-command with "AT", '$at_command
+            }
+        done
+    }
+
 # Disable flightmode
     echo Activate modem
     COMMAND='AT+CFUN=1' gcom -d "$device" -s /etc/gcom/at.gcom
@@ -475,8 +499,12 @@ proto_atc_setup () {
                         v4netmask=$(subnet_calc $v4address)
                         v4gateway=$(echo $v4netmask | awk -F ' ' '{print $2}')
                         v4netmask=$(echo $v4netmask | awk -F ' ' '{print $1}')
+                        dual_stack=0
                     }
-                    [ $(IPversion $IPaddress1) = 'IPv6' ] && v6address=$(IPv6_decTOhex $IPaddress1)
+                    [ $(IPversion $IPaddress1) = 'IPv6' ] && {
+                        v6address=$(IPv6_decTOhex $IPaddress1)
+                        dual_stack=0
+                    }
                     [ $(IPversion $IPaddress2) = 'IPv6' ] && {
                         v6address=$(IPv6_decTOhex $IPaddress2)
                         dual_stack=1
@@ -532,6 +560,9 @@ proto_atc_setup () {
                     }
                     dns1=$(echo $URCvalue | awk -F ',' '{print $6}')
                     dns2=$(echo $URCvalue | awk -F ',' '{print $7}')
+                    [ -z "$dns1" -a -z "$dns2" -a "$v6dns_slaac" != 1 ] && {
+                        echo 'No DNS servers provided. Try to activate IPv6 DNS servers via SLAAC in Advanced Setting.'
+                    }
                     [ $(IPversion $dns1) = 'IPv4' ] && {
                         v4dns1=$dns1
                         v4dns2=$dns2
@@ -540,7 +571,7 @@ proto_atc_setup () {
                         v6dns1=$(IPv6_decTOhex $dns1)
                         v6dns2=$(IPv6_decTOhex $dns2)
                     }
-                    [ $dual_stack != 1 ] && {
+                    [ $dual_stack != 1 -o "$v6dns_slaac" = 1 ] && {
                         proto_init_update "$ifname" 1
                         proto_set_keep 1
                         proto_add_data
