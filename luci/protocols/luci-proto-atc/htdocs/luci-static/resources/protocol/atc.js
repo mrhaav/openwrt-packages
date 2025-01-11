@@ -81,9 +81,9 @@ return network.registerProtocol('atc', {
 		o.datatype = 'and(uinteger,minlength(4),maxlength(8))';
 
 		o = s.taboption('general', form.ListValue, 'auth', _('Authentication Type'));
+		o.value('0', _('NONE'));
 		o.value('1', _('PAP'));
 		o.value('2', _('CHAP'));
-		o.value('0', _('NONE'));
 		o.default = '0';
 
 		o = s.taboption('general', form.Value, 'username', _('PAP/CHAP username'));
@@ -96,8 +96,8 @@ return network.registerProtocol('atc', {
 		o.password = true;
 
 		o = s.taboption('general', form.ListValue, 'pdp', _('PDP Type'));
-		o.value('IPV4V6', _('IPv4/IPv6'));
 		o.value('IP', _('IPv4'));
+		o.value('IPV4V6', _('IPv4/IPv6'));
 		o.value('IPV6', _('IPv6'));
 		o.default = 'IP';
 
@@ -108,15 +108,16 @@ return network.registerProtocol('atc', {
 		o.value('2', _('All'));
 		o.default = 0;
 
-		if (L.hasSystemFeature('ipv6')) {
-			o = s.taboption('advanced', form.Flag, 'atc_ipv6', _('Enable IPv6 negotiation'));
-			o.ucioption = 'ipv6';
-			o.default = o.disabled;
-		}
-
 		o = s.taboption('advanced', form.Value, 'delay', _('Modem init timeout'), _('Amount of seconds to wait for the modem to become ready'));
-		o.placeholder = '1';
+		o.placeholder = '15';
 		o.datatype    = 'min(1)';
+
+		o = s.taboption('advanced', form.Flag, 'v6dns_ra', _('IPv6 DNS servers via Router Advertisment.'));
+		o.default = o.disabled;
+
+		o = s.taboption('advanced', form.DynamicList, 'custom_at', _('Add custom AT-commands'),
+			_('Custom AT-commands will be run before modem is activated.'));
+		s.datatype = 'string';
 
 		o = s.taboption('advanced', form.Value, 'mtu', _('Override MTU'));
 		o.placeholder = dev ? (dev.getMTU() || '1500') : '1500';
