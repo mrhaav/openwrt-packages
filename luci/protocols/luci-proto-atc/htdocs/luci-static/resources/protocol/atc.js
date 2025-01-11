@@ -108,7 +108,8 @@ return network.registerProtocol('atc', {
 		o.value('2', _('All'));
 		o.default = 0;
 
-		o = s.taboption('advanced', form.Value, 'delay', _('Modem init timeout'), _('Amount of seconds to wait for the modem to become ready'));
+		o = s.taboption('advanced', form.Value, 'delay', _('Modem boot timeout'),
+			_('Amount of seconds to wait during boot for the modem to become ready'));
 		o.placeholder = '15';
 		o.datatype    = 'min(1)';
 
