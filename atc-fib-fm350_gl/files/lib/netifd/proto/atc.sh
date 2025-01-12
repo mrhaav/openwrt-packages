@@ -491,6 +491,8 @@ proto_atc_setup () {
         
                 +CGPADDR )
                     [ "$atc_debug" -gt 1 ] && echo $URCline
+                    v4address=""
+                    v6address=""
                     URCvalue=$(echo $URCvalue | sed -e 's/"//g')
                     IPaddress1=$(echo $URCvalue | awk -F ',' '{print $2}')
                     IPaddress2=$(echo $URCvalue | awk -F ',' '{print $3}')
