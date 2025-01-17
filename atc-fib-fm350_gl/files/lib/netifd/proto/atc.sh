@@ -635,7 +635,7 @@ proto_atc_setup () {
                     [ $OK_received -eq 11 ] && {
                         sms_text=$URCline
                         sms_text=$(ucs2TOascii $sms_text)
-                        echo 'SMS recieved from '$sms_sender
+                        echo 'SMS received from '$sms_sender
                         echo $sms_sender > $sms_rx_folder'/sms_'$sms_date
                         echo -e $sms_text >> $sms_rx_folder'/sms_'$sms_date
                         /usr/bin/atc_rx_sms.sh $sms_rx_folder'/sms_'$sms_date 2> /dev/null
