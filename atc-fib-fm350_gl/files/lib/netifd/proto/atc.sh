@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # AT commands for Fibocom FM350-GL modem
-# 2025-01-11 by mrhaav
+# 2025-01-20 by mrhaav
 #
 
 
@@ -36,7 +36,7 @@ update_DHCPv6 () {
     json_add_string proto "dhcpv6"
     proto_add_dynamic_defaults
     json_add_string extendprefix 1
-    [ "$peerdns" = 0 -o "$v6dns_slaac" = 1 ] || {
+    [ "$peerdns" = 0 -o "$v6dns_ra" = 1 ] || {
         json_add_array dns
         json_add_string "" "$v6dns1"
         json_add_string "" "$v6dns2"
@@ -562,8 +562,8 @@ proto_atc_setup () {
                     }
                     dns1=$(echo $URCvalue | awk -F ',' '{print $6}')
                     dns2=$(echo $URCvalue | awk -F ',' '{print $7}')
-                    [ -z "$dns1" -a -z "$dns2" -a "$v6dns_slaac" != 1 ] && {
-                        echo 'No DNS servers provided. Try to activate IPv6 DNS servers via SLAAC in Advanced Setting.'
+                    [ -z "$dns1" -a -z "$dns2" -a "$v6dns_ra" != 1 ] && {
+                        echo 'No DNS servers provided. Try to activate IPv6 DNS servers via Router Advertisment in Advanced Setting.'
                     }
                     [ $(IPversion $dns1) = 'IPv4' ] && {
                         v4dns1=$dns1
@@ -573,7 +573,7 @@ proto_atc_setup () {
                         v6dns1=$(IPv6_decTOhex $dns1)
                         v6dns2=$(IPv6_decTOhex $dns2)
                     }
-                    [ $dual_stack != 1 -o "$v6dns_slaac" = 1 ] && {
+                    [ $dual_stack != 1 -o "$v6dns_ra" = 1 ] && {
                         proto_init_update "$ifname" 1
                         proto_set_keep 1
                         proto_add_data
