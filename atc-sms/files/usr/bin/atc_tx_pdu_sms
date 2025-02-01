@@ -1,0 +1,247 @@
+#!/bin/sh
+#
+# Send SMS with protocol atc
+#
+# by mrhaav 2025-01-30
+#
+
+interface=$(uci show network | grep atc | grep proto | awk -F '.' '{print $2}')
+device=$(uci get network.${interface}.device)
+smsc=$(uci get network.${interface}.smsc 2>/dev/null)
+
+
+byte_swap () {
+
+    local byte_in=$1
+    local x=0
+    local byte_out=''
+    local byte
+
+    [ $((${#byte_in}%2)) -eq 0 ] && {
+        while [ $x -lt ${#byte_in} ]
+        do
+            byte=${byte_in:$x:2}
+            byte_out=$byte_out${byte:1}
+            byte_out=$byte_out${byte::1}
+            x=$((x+2))
+        done
+        echo $byte_out
+    }
+}
+
+hex2bin () {
+    local bin_out
+
+    case $1 in
+        0 )
+            bin_out='0000' ;;
+        1 )
+            bin_out='0001' ;;
+        2 )
+            bin_out='0010' ;;
+        3 )
+            bin_out='0011' ;;
+        4 )
+            bin_out='0100' ;;
+        5 )
+            bin_out='0101' ;;
+        6 )
+            bin_out='0110' ;;
+        7 )
+            bin_out='0111' ;;
+        8 )
+            bin_out='1000' ;;
+        9 )
+            bin_out='1001' ;;
+        A )
+            bin_out='1010' ;;
+        B )
+            bin_out='1011' ;;
+        C )
+            bin_out='1100' ;;
+        D )
+            bin_out='1101' ;;
+        E )
+            bin_out='1110' ;;
+        F )
+            bin_out='1111' ;;
+    esac
+
+    echo $bin_out
+}
+
+bin2hex () {
+    local hex_out
+
+    case $1 in
+        0000 )
+            hex_out='0' ;;
+        0001 )
+            hex_out='1' ;;
+        0010 )
+            hex_out='2' ;;
+        0011 )
+            hex_out='3' ;;
+        0100 )
+            hex_out='4' ;;
+        0101 )
+            hex_out='5' ;;
+        0110 )
+            hex_out='6' ;;
+        0111 )
+            hex_out='7' ;;
+        1000 )
+            hex_out='8' ;;
+        1001 )
+            hex_out='9' ;;
+        1010 )
+            hex_out='A' ;;
+        1011 )
+            hex_out='B' ;;
+        1100 )
+            hex_out='C' ;;
+        1101 )
+            hex_out='D' ;;
+        1110 )
+            hex_out='E' ;;
+        1111 )
+            hex_out='F' ;;
+    esac
+
+    echo $hex_out
+}
+
+ascii2gsm7 () {
+    local ascii_in=$1
+    local ascii_len=${#ascii_in}
+    local x=0
+    local gsm7_out=''
+    local ascii_byte
+
+    while [ $x -lt $ascii_len ]
+    do
+        ascii_byte=${ascii_in:$x:1}
+        ascii_byte=$(printf "%x" "'"$ascii_byte | awk '{ print toupper($0) }')
+        [ "${ascii_byte::1}" -ge 2 -a "${ascii_byte::1}" -le 7 ] && {
+            case "$ascii_byte" in
+                24 )
+                    ascii_byte=02 ;;
+                40 )
+                    ascii_byte=00 ;;
+                5B )
+                    ascii_byte=1B3C ;;
+                5C )
+                    ascii_byte=1B2F ;;
+                5D )
+                    ascii_byte=1B3E ;;
+                5E )
+                    ascii_byte=1B1A ;;
+                5F )
+                    ascii_byte=11 ;;
+                7B )
+                    ascii_byte=1B28 ;;
+                7C )
+                    ascii_byte=1B40 ;;
+                7D )
+                    ascii_byte=1B29 ;;
+                7E )
+                    ascii_byte=1B3D ;;
+            esac
+        } || {
+            ascii_byte=20
+        }
+        gsm7_out=$gsm7_out$ascii_byte
+        x=$((x+1))
+    done
+
+    echo $gsm7_out
+}
+
+gsm72hex () {
+    local gsm7_in=$1
+    local gsm7_len=${#gsm7_in}
+    local hex_out=''
+    local x=0
+    local fill
+
+    bin_bites=$(hex2bin ${gsm7_in:$x:1})
+    x=$((x+1))
+    bin_bites=${bin_bites:1}$(hex2bin ${gsm7_in:$x:1})
+    x=$((x+1))
+
+    while [ $x -lt $gsm7_len ]
+    do
+        [ ${#bin_bites} -gt 0 ] && {
+            next_bites=$(hex2bin ${gsm7_in:$x:1})
+            x=$((x+1))
+            next_bites=${next_bites:1}$(hex2bin ${gsm7_in:$x:1})
+            fill=$((8-${#bin_bites}))
+            bin_byte=${next_bites: -$fill}$bin_bites
+            hex_out=$hex_out$(bin2hex ${bin_byte::4})$(bin2hex ${bin_byte: -4})
+            bin_bites=${next_bites:: -$fill}
+            x=$((x+1))
+        } || {
+            bin_bites=$(hex2bin ${gsm7_in:$x:1})
+            x=$((x+1))
+            bin_bites=${bin_bites:1}$(hex2bin ${gsm7_in:$x:1})
+            x=$((x+1))
+        }
+    done
+    [ ${#bin_bites} -gt 0 ] && {
+        bin_bites='0000000'$bin_bites
+        bin_byte=${bin_bites: -8}
+        hex_out=$hex_out$(bin2hex ${bin_byte::4})$(bin2hex ${bin_byte: -4})
+    }
+
+    gsm7_len=$((gsm7_len/2))
+    hex_out=$(printf '%02x' $gsm7_len | awk '{ print toupper($0) }')$hex_out
+
+    echo $hex_out
+
+}
+
+
+sms=$1
+[ -e "$sms" ] && is_file=1 || is_file=0
+[ $is_file = '0' ] && sms_rows=$(echo "$sms" | wc -l) || sms_rows=$(cat "$sms" | wc -l)
+x=2
+[ $sms_rows -ge 2 ] && {
+    [ $is_file = '0' ] && receiver=$(echo "$sms" | sed -n '1p') || receiver=$(cat "$sms" | sed -n '1p')
+    while [ $x -le $sms_rows ]
+    do
+        [ $is_file = '0' ] && sms_line=$(echo "$sms" | sed -n $x'p') || sms_line=$(cat "$sms" | sed -n $x'p')
+        sms_gsm7=$sms_gsm7$(ascii2gsm7 "$sms_line")
+        [ $x -lt $sms_rows ] && sms_gsm7=$sms_gsm7'0A'
+        x=$((x+1))
+    done
+
+    [ ${receiver::1} = '+' ] && {
+        toa='91'
+        receiver=${receiver:1}
+    } || {
+        toa='A1'
+    }
+    receiver_len=${#receiver}
+    [ $((${#receiver}%2)) -eq 1 ] && receiver=$receiver'F'
+    receiver=$(byte_swap $receiver)
+    sms_pdu='1100'$(printf '%02x' $receiver_len | awk '{ print toupper($0) }')$toa$receiver'000000'
+    sms_gsm7=$(gsm72hex $sms_gsm7)
+    sms_pdu=$sms_pdu$sms_gsm7
+    pdu_len=$((${#sms_pdu}/2))
+    [ -z $smsc ] && {
+        sms_pdu='00'$sms_pdu
+    } || {
+        echo $smsc
+        [ $((${#smsc}%2)) -eq 1 ] && smsc=$smsc'F'
+        smsc=$(byte_swap $smsc)
+        smsc='91'$smsc
+        smsc_len=${#smsc}
+        smsc_len=$(printf '%02x' $((smsc_len/2)) | awk '{ print toupper($0) }')
+        sms_pdu=$smsc_len$smsc$sms_pdu
+    }
+    COMMAND='AT+CMGS='$pdu_len gcom -d "$device" -s /etc/gcom/at.gcom
+    COMMAND=$sms_pdu gcom -d "$device" -s /etc/gcom/at.gcom
+    gcom -d "$device" -s /etc/gcom/end_sms.gcom
+} || {
+    logger tx_sms 'Wrong SMS format'
+}
