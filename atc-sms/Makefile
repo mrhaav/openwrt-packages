@@ -16,6 +16,7 @@ define Package/$(PKG_NAME)
   TITLE:=Command line SMS support to protocol atc
   SUBMENU:=WWAN
   PKGARCH:=all
+  DEPENDS:=+comgt
 endef
 
 define Package/$(PKG_NAME)/description
