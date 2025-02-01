@@ -1,0 +1,305 @@
+#!/bin/sh
+#
+# SMS PDU receiver with protocol atc
+# by mrhaav 2025-01-30
+#
+
+rx_pdu=$1
+rx_pdu=$(echo $rx_pdu | awk '{ print toupper($0) }')
+ignor_gsm7=0
+
+byte_swap () {
+
+    local byte_in=$1
+    local x=0
+    local byte_out=''
+    local byte
+
+    [ $((${#byte_in}%2)) -eq 0 ] && {
+        while [ $x -lt ${#byte_in} ]
+        do
+            byte=${byte_in:$x:2}
+            byte_out=$byte_out${byte:1}
+            byte_out=$byte_out${byte::1}
+            x=$((x+2))
+        done
+        echo $byte_out
+    }
+}
+
+hex2bin () {
+    local bin_out
+
+    case $1 in
+        0 )
+            bin_out='0000' ;;
+        1 )
+            bin_out='0001' ;;
+        2 )
+            bin_out='0010' ;;
+        3 )
+            bin_out='0011' ;;
+        4 )
+            bin_out='0100' ;;
+        5 )
+            bin_out='0101' ;;
+        6 )
+            bin_out='0110' ;;
+        7 )
+            bin_out='0111' ;;
+        8 )
+            bin_out='1000' ;;
+        9 )
+            bin_out='1001' ;;
+        A )
+            bin_out='1010' ;;
+        B )
+            bin_out='1011' ;;
+        C )
+            bin_out='1100' ;;
+        D )
+            bin_out='1101' ;;
+        E )
+            bin_out='1110' ;;
+        F )
+            bin_out='1111' ;;
+    esac
+
+    echo $bin_out
+}
+
+bin2hex () {
+    local hex_out
+
+    case $1 in
+        0000 )
+            hex_out='0' ;;
+        0001 )
+            hex_out='1' ;;
+        0010 )
+            hex_out='2' ;;
+        0011 )
+            hex_out='3' ;;
+        0100 )
+            hex_out='4' ;;
+        0101 )
+            hex_out='5' ;;
+        0110 )
+            hex_out='6' ;;
+        0111 )
+            hex_out='7' ;;
+        1000 )
+            hex_out='8' ;;
+        1001 )
+            hex_out='9' ;;
+        1010 )
+            hex_out='A' ;;
+        1011 )
+            hex_out='B' ;;
+        1100 )
+            hex_out='C' ;;
+        1101 )
+            hex_out='D' ;;
+        1110 )
+            hex_out='E' ;;
+        1111 )
+            hex_out='F' ;;
+    esac
+
+    echo $hex_out
+}
+
+gsm72ascii () {
+
+    local ignor=$1
+    local gsm7_in=$2
+    local gsm7_bytes=${#gsm7_in}
+    local gsm7_byte
+    local ascii_out=''
+    local x=0
+
+    while [ $x -lt $gsm7_bytes ]
+    do
+        gsm7_byte=${gsm7_in:$x:2}
+        [ "$gsm7_byte" = '1B' ] && {
+            x=$((x+2))
+            gsm7_byte='1B'${gsm7_in:$x:2}
+        }
+        if [ "${gsm7_byte::1}" = '0' -o "${gsm7_byte::1}" = '1' ]
+        then
+            case "$gsm7_byte" in
+                00 )
+                    gsm7_byte=40 ;;
+                02 )
+                    gsm7_byte=24 ;;
+                0A|0D )
+                    ;;
+                11 )
+                    gsm7_byte=5F ;;
+                * )
+                    gsm7_byte=20 ;;
+            esac
+        elif [ "${#gsm7_byte}" = '2' ]
+        then
+          [ "$gsm7_byte" = '24' ] && gsm7_byte=20
+        else
+            case "$gsm7_byte" in
+                1B1A )
+                    gsm7_byte=5E ;;
+                1B28 )
+                    gsm7_byte=7B ;;
+                1B29 )
+                    gsm7_byte=7D ;;
+                1B2F )
+                    gsm7_byte=5C ;;
+                1B3C )
+                    gsm7_byte=5B ;;
+                1B3D )
+                    gsm7_byte=7E ;;
+                1B3E )
+                    gsm7_byte=5D ;;
+                1B40 )
+                    gsm7_byte=7C ;;
+                1B65|\
+                24|\
+                5B|5C|5D|5E|5F|\
+                60|\
+                7B|7C|7D|7E|7F )
+                    gsm7_byte=20 ;;
+            esac
+        fi
+        [ $gsm7_byte = '0A' ] && {
+            echo $ascii_out >> $sms_file
+            ascii_out=''
+        } || {
+            [ $ignor -eq 0 ] && {
+                ascii_out=$ascii_out"$(printf '\x'$gsm7_byte)"
+            } || {
+                ignor=$((ignor-1))
+            }
+        }
+        x=$((x+2))
+    done
+
+    sender=$ascii_out
+    echo $ascii_out >> $sms_file
+}
+
+hex2gsm7 () {
+    local hex_in=$1
+    local x=0
+    local gsm7_out=''
+
+    local gsm7_len=$(printf '%d' 0x${hex_in::2})
+    hex_in=${hex_in:2}
+
+    while [ $x -lt ${#hex_in} ]
+    do
+        bin_byte=$(hex2bin ${hex_in:$x:1})
+        x=$((x+1))
+        bin_byte=$bin_byte$(hex2bin ${hex_in:$x:1})
+        x=$((x+1))
+        rest=$bin_byte$rest
+        [ $gsm7_len -gt 0 ] && {
+            gsm7_byte=${rest: -7}
+            gsm7_out=$gsm7_out$(bin2hex '0'${gsm7_byte::3})
+            gsm7_out=$gsm7_out$(bin2hex ${gsm7_byte: -4})
+            rest=${rest:: -7}
+            gsm7_len=$((gsm7_len-1))
+        }
+        [ ${#rest} -ge 7 -a $gsm7_len -gt 0 ] && {
+            gsm7_byte=${rest: -7}
+            gsm7_out=$gsm7_out$(bin2hex '0'${gsm7_byte::3})
+            gsm7_out=$gsm7_out$(bin2hex ${gsm7_byte: -4})
+            rest=${rest:: -7}
+            gsm7_len=$((gsm7_len-1))
+        }
+    done
+    echo $gsm7_out
+}
+
+
+# Main
+
+# SMSC number
+[ ${rx_pdu::2} != '00' ] && {
+    x=$(printf '%d' 0x${rx_pdu::2})
+    x=$((x-1))
+    x=$((x*2))
+    smsc=${rx_pdu:4:$x}
+    smsc=$(byte_swap $smsc)
+    [ ${smsc: -1} = 'F' ] && smsc=${smsc:: -1}
+    x=$((x+4))
+    rx_pdu=${rx_pdu:$x}
+} || {
+    rx_pdu=${rx_pdu:2}
+}
+
+sms_deliver=$(hex2bin ${rx_pdu::1})$(hex2bin ${rx_pdu:1:1})
+tp_udhi=${sms_deliver:1:1}
+rx_pdu=${rx_pdu:2}
+
+# Sender
+sender_len=$(printf '%d' 0x${rx_pdu::2})
+[ $(($sender_len%2)) -eq 1 ] && sender_len=$((sender_len+1))
+# Type of address
+toa=${rx_pdu:2:2}
+sender=${rx_pdu:4:$sender_len}
+rx_pdu=${rx_pdu:$((sender_len+4))}
+
+# Protocol identifier
+tp_pid=${rx_pdu::2}
+rx_pdu=${rx_pdu:2}
+
+# Data coding scheme
+tp_dcs=${rx_pdu::2}
+rx_pdu=${rx_pdu:2}
+
+# Date and time
+date_time=${rx_pdu::14}
+date_time=$(byte_swap $date_time)
+date_time=${date_time::6}'_'${date_time:6:6}'-'${date_time: -2}
+rx_pdu=${rx_pdu:14}
+
+sms_file='/var/sms/rx/sms_'$date_time
+
+[ ${toa:0:1} = 'D' ] && {
+    sender=$(hex2gsm7 '18'$sender)
+    gsm72ascii 0 $sender
+} || {
+    sender=$(byte_swap $sender)
+    [ ${sender: -1} = 'F' ] && sender=${sender:: -1}
+    [ $toa = '91' ] && sender='+'$sender
+    echo $sender > $sms_file
+}
+
+
+# User data
+if [ $tp_dcs = '00' ]
+then
+# Check extra header
+    [ $tp_udhi -eq 1 ] && {
+    tp_udhl_len=$(printf '%d' 0x${rx_pdu:2:2})
+        [ ${rx_pdu:2:4} = '0500' ] && {
+            ignor_gsm7=7
+            concat=1
+            concat_ref=$(printf '%d' 0x${rx_pdu:8:2})
+            concat_tot=$(printf '%d' 0x${rx_pdu:10:2})
+            concat_mes=$(printf '%d' 0x${rx_pdu:12:2})
+            mv $sms_file $sms_file'-con-'$concat_ref'-'$concat_tot'-'$concat_mes
+            sms_file=$sms_file'-con-'$concat_ref'-'$concat_tot'-'$concat_mes
+        } || {
+            logger -t rx_sms 'Unsupported SMS format'
+            rx_pdu=''
+        }
+    }
+    [ -n $rx_pdu ] && {
+        logger -t atc_rx_sms ' from '$sender
+        rx_pdu=$(hex2gsm7 $rx_pdu)
+        gsm72ascii $ignor_gsm7 $rx_pdu
+       /usr/bin/atc_sms_user $sms_file 2>/dev/null
+    }
+else
+    logger -t rx_sms 'Received SMS not in GSM7 format'
+    echo $rx_odu >> $sms_file
+fi
