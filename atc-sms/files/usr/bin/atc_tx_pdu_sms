@@ -240,8 +240,7 @@ x=2
         sms_pdu=$smsc_len$smsc$sms_pdu
     }
     COMMAND='AT+CMGS='$pdu_len gcom -d "$device" -s /etc/gcom/at.gcom
-    COMMAND=$sms_pdu gcom -d "$device" -s /etc/gcom/at.gcom
-    gcom -d "$device" -s /etc/gcom/end_sms.gcom
+    COMMAND=$sms_pdu gcom -d "$device" -s /etc/gcom/send_pdu.gcom
 } || {
     logger tx_sms 'Wrong SMS format'
 }
