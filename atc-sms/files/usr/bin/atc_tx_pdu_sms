@@ -2,7 +2,7 @@
 #
 # Send SMS with protocol atc
 #
-# by mrhaav 2025-01-30
+# by mrhaav 2025-02-02
 #
 
 interface=$(uci show network | grep atc | grep proto | awk -F '.' '{print $2}')
