@@ -190,7 +190,7 @@ do
 # Check received SMS
 	for storage in sim me
 	do
-		messageID=$(uqmi -d $device --list-messages --storage $storage  | jsonfilter -e '@[0]')
+		messageID=$(uqmi -d $device --list-messages --storage $storage -t 500 | jsonfilter -e '@[0]')
 		while [ -n "$messageID" ]
 		do
 			json_load "$(uqmi -s -d $device --get-message $messageID --storage $storage 2>/dev/null)"
@@ -214,7 +214,7 @@ do
 			/usr/bin/uqmi_sms.sh $receiveFolder/${sms_file} 2> /dev/null
 			uqmi -d $device --delete-message $messageID --storage $storage
 			sleep 1
-			messageID=$(uqmi -d $device --list-messages --storage $storage  | jsonfilter -e '@[0]')
+			messageID=$(uqmi -d $device --list-messages --storage $storage -t 500 | jsonfilter -e '@[0]')
 		done
 	done
 
