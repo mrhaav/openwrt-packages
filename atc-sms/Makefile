@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
  
 PKG_NAME:=atc-sms
 PKG_VERSION:=2025.02.02
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_MAINTAINER:=Henrik Ginstmark <henrik@ginstmark.se>
 PKG_LICENSE:=GPL-2.0
