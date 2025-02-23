@@ -301,5 +301,5 @@ then
     }
 else
     logger -t rx_sms 'Received SMS not in GSM7 format'
-    echo $rx_odu >> $sms_file
+    echo $rx_pdu >> $sms_file
 fi
