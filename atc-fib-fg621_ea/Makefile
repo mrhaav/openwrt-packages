@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
  
 PKG_NAME:=atc-fib-fg621_ea
 PKG_VERSION:=2025.03.17
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_MAINTAINER:=Henrik Ginstmark <henrik@ginstmark.se>
 PKG_LICENSE:=GPL-2.0
