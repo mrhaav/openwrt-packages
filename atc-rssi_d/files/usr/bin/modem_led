@@ -3,19 +3,20 @@
 # leds for ASUS 4G-AX56
 
 led_status=$1
+[ $led_status = 'rssi' ] && rssi=$2
 
 # LED names
-red=/sys/class/leds/red:modem/trigger
-yellow=/sys/class/leds/yellow:modem/trigger
-blue=/sys/class/leds/blue:modem/trigger
-white=/sys/class/leds/white:modem/trigger
+red=/sys/class/leds/red:mobile/trigger
+yellow=/sys/class/leds/yellow:mobile/trigger
+blue=/sys/class/leds/blue:mobile/trigger
+white=/sys/class/leds/white:mobile/trigger
 
-RSSI_1=white:rssi-1
-RSSI_2=white:rssi-2
-RSSI_3=white:rssi-3
+rssi-1=/sys/class/leds/white:rssi-1/trigger
+rssi-2=/sys/class/leds/white:rssi-2/trigger
+rssi-3=/sys/class/leds/white:rssi-3/trigger
 
 
-case $led_status in
+case "$led_status" in
 
     boot )
         echo default-on > $red
@@ -52,28 +53,27 @@ case $led_status in
         echo default-on > $white
         ;;
 
-    rssi-0 )
-        echo none > /sys/class/leds/${RSSI_3}/trigger
-        echo none > /sys/class/leds/${RSSI_2}/trigger
-        echo none > /sys/class/leds/${RSSI_1}/trigger
-        ;;
-
-    rssi-1 )
-        echo none > /sys/class/leds/${RSSI_3}/trigger
-        echo none > /sys/class/leds/${RSSI_2}/trigger
-        echo default-on > /sys/class/leds/${RSSI_1}/trigger
-        ;;
-
-    rssi-2 )
-        echo none > /sys/class/leds/${RSSI_3}/trigger
-        echo default-on > /sys/class/leds/${RSSI_2}/trigger
-        echo default-on > /sys/class/leds/${RSSI_1}/trigger
-        ;;
-
-    rssi-3 )
-        echo default-on > /sys/class/leds/${RSSI_3}/trigger
-        echo default-on > /sys/class/leds/${RSSI_2}/trigger
-        echo default-on > /sys/class/leds/${RSSI_1}/trigger
+    rssi )
+        if [ $rssi -le 20 ]
+        then
+            echo none > $rssi-1
+            echo none > $rssi-2
+            echo none > $rssi-3
+        elif [ $rssi -le 44 ]
+        then
+            echo default-on > $rssi-1
+            echo none > $rssi-2
+            echo none > $rssi-3
+        elif [ $rssi -le 68 ]
+        then
+            echo default-on > $rssi-1
+            echo default-on > $rssi-2
+            echo none > $rssi-3
+        else
+            echo default-on > $rssi-1
+            echo default-on > $rssi-2
+            echo default-on > $rssi-3
+        fi
         ;;
 
     off )
@@ -81,9 +81,9 @@ case $led_status in
         echo none > $yellow
         echo none > $blue
         echo none > $white
-        echo none > /sys/class/leds/${RSSI_3}/trigger
-        echo none > /sys/class/leds/${RSSI_2}/trigger
-        echo none > /sys/class/leds/${RSSI_1}/trigger
+        echo none > $rssi-1
+        echo none > $rssi-2
+        echo none > $rssi-3
         ;;
 
 esac
