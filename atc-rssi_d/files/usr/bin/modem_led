@@ -11,9 +11,9 @@ yellow=/sys/class/leds/yellow:mobile/trigger
 blue=/sys/class/leds/blue:mobile/trigger
 white=/sys/class/leds/white:mobile/trigger
 
-rssi-1=/sys/class/leds/white:rssi-1/trigger
-rssi-2=/sys/class/leds/white:rssi-2/trigger
-rssi-3=/sys/class/leds/white:rssi-3/trigger
+rssi_1=/sys/class/leds/white:rssi-1/trigger
+rssi_2=/sys/class/leds/white:rssi-2/trigger
+rssi_3=/sys/class/leds/white:rssi-3/trigger
 
 
 case "$led_status" in
@@ -56,23 +56,23 @@ case "$led_status" in
     rssi )
         if [ $rssi -le 20 ]
         then
-            echo none > $rssi-1
-            echo none > $rssi-2
-            echo none > $rssi-3
+            echo none > $rssi_1
+            echo none > $rssi_2
+            echo none > $rssi_3
         elif [ $rssi -le 44 ]
         then
-            echo default-on > $rssi-1
-            echo none > $rssi-2
-            echo none > $rssi-3
+            echo default-on > $rssi_1
+            echo none > $rssi_2
+            echo none > $rssi_3
         elif [ $rssi -le 68 ]
         then
-            echo default-on > $rssi-1
-            echo default-on > $rssi-2
-            echo none > $rssi-3
+            echo default-on > $rssi_1
+            echo default-on > $rssi_2
+            echo none > $rssi_3
         else
-            echo default-on > $rssi-1
-            echo default-on > $rssi-2
-            echo default-on > $rssi-3
+            echo default-on > $rssi_1
+            echo default-on > $rssi_2
+            echo default-on > $rssi_3
         fi
         ;;
 
@@ -81,9 +81,9 @@ case "$led_status" in
         echo none > $yellow
         echo none > $blue
         echo none > $white
-        echo none > $rssi-1
-        echo none > $rssi-2
-        echo none > $rssi-3
+        echo none > $rssi_1
+        echo none > $rssi_2
+        echo none > $rssi_3
         ;;
 
 esac
