@@ -1,0 +1,18 @@
+#!/bin/sh /etc/rc.common
+# rssi
+# by mrhaav 2025-03-17
+
+START=99
+STOP=01
+
+USE_PROCD=1
+
+start_service() {
+    procd_open_instance
+    procd_set_param command sh "/usr/bin/rssi_d.sh"
+    procd_close_instance
+}
+
+stop_service() {
+	/usr/bin/modem_led off 2> /dev/null
+}
