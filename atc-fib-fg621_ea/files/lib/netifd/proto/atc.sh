@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # AT commands for Fibocom FG621-EA modem
-# 2025-01-15 by mrhaav
+# 2025-03-17 by mrhaav
 #
 
 
@@ -120,7 +120,7 @@ nb_rat () {
     case $rat_nb in
         0|1|3 )
             rat_nb=GSM ;;
-        2|4|5|6 )
+        2|4|5|6|15 )
             rat_nb=WCDMA ;;
         7|16 )
             rat_nb=LTE ;;
@@ -169,32 +169,6 @@ full_apn () {
     echo $apn
 }
 
-ucs2TOascii () {
-    local ucs2_string=$1
-    local ascii_string=''
-    local x=0
-    local ucs2_char ucs2_len
-
-    ucs2_len=$((${#ucs2_string}/4*4))
-
-    while [ $x -lt $ucs2_len ]
-    do
-        ucs2_char=$(echo ${ucs2_string:$x:4})
-        [ ${ucs2_char::2} = '00' ] && {
-            [ ${ucs2_char: -2} = '0A' ] && {
-                ascii_string=$ascii_string'\n'
-            } || {
-                ascii_string=$ascii_string$(printf "\\x${ucs2_char: -2}")
-            }
-        } || {
-            ascii_string=$ascii_string'\u'$ucs2_char
-        }
-        x=$(($x+4))
-    done
-    
-    echo $ascii_string
-}
-
 proto_atc_init_config() {
     no_device=1
     available=1
@@ -217,7 +191,7 @@ proto_atc_setup () {
     local OK_received=0
     local re_connect=0
     local pdp_still_active=0
-    local atOut dual_stack manufactor model fw used_apn lines x at_line at_command
+    local atOut dual_stack manufactor model fw used_apn lines x at_line at_command old_cell
     local dns1 dns2 rat new_rat ifname plmn cops_format status sms_index sms_text sms_sender sms_date
     local devname devpath device apn pdp pincode auth username password delay atc_debug $PROTO_DEFAULT_OPTIONS
     json_get_vars device ifname apn pdp pincode auth username password delay atc_debug v6dns_ra $PROTO_DEFAULT_OPTIONS
@@ -364,9 +338,9 @@ proto_atc_setup () {
     [ "$atOut" != 'OK' ] && echo $atOut
 
 # SMS config
-    atOut=$(COMMAND='AT+CMGF=1' gcom -d "$device" -s /etc/gcom/run_at.gcom)
+    atOut=$(COMMAND='AT+CMGF=0' gcom -d "$device" -s /etc/gcom/run_at.gcom)
     [ "$atOut" != 'OK' ] && echo $atOut
-    atOut=$(COMMAND='AT+CSCS="UCS2"' gcom -d "$device" -s /etc/gcom/run_at.gcom)
+    atOut=$(COMMAND='AT+CSCS="GSM"' gcom -d "$device" -s /etc/gcom/run_at.gcom)
     [ "$atOut" != 'OK' ] && echo $atOut
     atOut=$(COMMAND='AT+CNMI=2,1' gcom -d "$device" -s /etc/gcom/run_at.gcom)
     [ "$atOut" != 'OK' ] && echo $atOut
@@ -419,6 +393,8 @@ proto_atc_setup () {
                     status=$(echo $URCvalue | awk -F ',' '{print $1}')
                     [ $URCcommand = '+CGREG' -a "$(echo $URCvalue | awk -F ',' '{print $4}')" = '7' ] && status=7
                     [ $URCcommand = '+CGREG' -a "$(echo $URCvalue | awk -F ',' '{print $4}')" = '16' ] && status=7
+                    [ $URCcommand = '+CEREG' -a "$(echo $URCvalue | awk -F ',' '{print $4}')" = '2' ] && status=7
+                    [ $URCcommand = '+CEREG' -a "$(echo $URCvalue | awk -F ',' '{print $4}')" = '15' ] && status=7
                     [ ${#URCvalue} -gt 6 ] && {
                         new_rat=$(echo $URCvalue | awk -F ',' '{print $4}')
                         new_rat=$(nb_rat $new_rat)
@@ -431,17 +407,22 @@ proto_atc_setup () {
                         1 )
                             if [ "$conStatus" = 'registered' ]
                             then
-                                [ "$atc_debug" -ge 1 ] && echo 'Cell change, '$(CxREG $URCvalue)
+                                [ "$atc_debug" -ge 1 -a "$old_cell" != $(echo $URCvalue | awk -F ',' '{print $2 $3}') ] && {
+                                    echo 'Cell change, '$(CxREG $URCvalue)
+                                    old_cell=$(echo $URCvalue | awk -F ',' '{print $2 $3}')
+                                }
                                 [ "$new_rat" != "$rat" -a -n "$rat" ] && {
                                     echo 'RATchange: '$rat' -> '$new_rat
+                                   /usr/bin/modem_led connected_$new_rat 2>/dev/null
                                     rat=$new_rat
                                 }
                             else
                                 echo ' '$conStatus' -> registered - home network, '$(CxREG $URCvalue)
                                 conStatus='registered'
+                                old_cell=$(echo $URCvalue | awk -F ',' '{print $2 $3}')
                                 [ $re_connect -eq 1 ] && {
                                     COMMAND='AT+GTRNDIS?' gcom -d "$device" -s /etc/gcom/at.gcom
-                                    OK_received=1
+                                    OK_received=9
                                 }
                             fi
                             ;;
@@ -461,17 +442,22 @@ proto_atc_setup () {
                         5 )
                             if [ "$conStatus" = 'registered' ]
                             then
-                                [ "$atc_debug" -ge 1 ] && echo 'Cell change, '$(CxREG $URCvalue)
+                                [ "$atc_debug" -ge 1 -a "$old_cell" != $(echo $URCvalue | awk -F ',' '{print $2 $3}') ] && {
+                                    echo 'Cell change, '$(CxREG $URCvalue)
+                                    old_cell=$(echo $URCvalue | awk -F ',' '{print $2 $3}')
+                                }
                                 [ "$new_rat" != "$rat" -a -n "$rat" ] && {
                                     echo RATchange: $rat -> $new_rat
+                                   /usr/bin/modem_led connected_$new_rat 2>/dev/null
                                     rat=$new_rat
                                 }
                             else
                                 echo ' '$conStatus' -> registered - roaming, '$(CxREG $URCvalue)
                                 conStatus='registered'
+                                old_cell=$(echo $URCvalue | awk -F ',' '{print $2 $3}')
                                 [ $re_connect -eq 1 ] && {
                                     COMMAND='AT+GTRNDIS?' gcom -d "$device" -s /etc/gcom/at.gcom
-                                    OK_received=1
+                                    OK_received=9
                                 }
                             fi
                             ;;
@@ -479,7 +465,7 @@ proto_atc_setup () {
                     ;;
                 
                 +COPS )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     cops_format=$(echo $URCvalue | awk -F ',' '{print $2}')
                     [ $cops_format -eq 0 ] && {
                         operator=$(echo $URCvalue | awk -F ',' '{print $3}' | sed -e 's/"//g')
@@ -489,12 +475,12 @@ proto_atc_setup () {
                         rat=$(echo $URCvalue | awk -F ',' '{print $4}')
                         rat=$(nb_rat $rat)
                         echo 'Registered to '$operator' PLMN:'$plmn' on '$rat
-                        OK_received=1
+                        OK_received=9
                     }
                     ;;
                 
                 +CGEV )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     case $URCvalue in
                         'EPS PDN DEACT'*|'NW PDN DEACT'* )
                             echo Session disconnected
@@ -512,7 +498,7 @@ proto_atc_setup () {
                     ;;
         
                 +CGPADDR )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     v4address=""
                     v6address=""
                     URCvalue=$(echo $URCvalue | sed -e 's/"//g')
@@ -537,8 +523,8 @@ proto_atc_setup () {
                     [ $re_connect -eq 0 ] && re_connect=1
                     ;;
 
-                +EONSNWNAME )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                +SPNWNAME )
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     [ $re_connect -eq 0 ] && {
                         COMMAND='AT+COPS=3,0;+COPS?;+COPS=3,2;+COPS?' gcom -d "$device" -s /etc/gcom/at.gcom
                         re_connect=1
@@ -546,11 +532,8 @@ proto_atc_setup () {
                     ;;
 
                 +CTZV )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     [ $re_connect -eq 1 -a $pdp_still_active -eq 0 ] && {
-                        COMMAND='AT+CGPADDR=1' gcom -d "$device" -s /etc/gcom/at.gcom
-                    }
-                    [ $re_connect -eq 1 -a $pdp_still_active -eq 1 ] && {
                         COMMAND='AT+GTRNDIS?' gcom -d "$device" -s /etc/gcom/at.gcom
                         OK_received=1
                     }
@@ -562,12 +545,12 @@ proto_atc_setup () {
                     ;;
 
                 +CGACT )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     pdp_still_active=$(echo $URCvalue | awk -F ',' '{print $2}')
                     ;;
 
                 '+CME ERROR' )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     [ "$URCvalue" = '5847' ] && {
                         COMMAND='AT+CGACT=1,1' gcom -d "$device" -s /etc/gcom/at.gcom
                     }
@@ -577,10 +560,13 @@ proto_atc_setup () {
                         proto_block_restart "$interface"
                         return 1
                     }
+                    [ "$URCvalue" = '38' ] && {
+                        echo 'Unsuccessful delivery of SMS'
+                    }
                     ;;
 
                 +CGCONTRDP )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     [ -z "$used_apn" ] && {
                         used_apn=$(echo $URCvalue | awk -F ',' '{print $3}')
                         used_apn=$(full_apn $used_apn)
@@ -603,7 +589,7 @@ proto_atc_setup () {
                     ;;
 
                 +GTRNDIS )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     pdp_still_active=$(echo $URCvalue | awk -F ',' '{print $1}')
                     [ $pdp_still_active -eq 0 ] && {
                         echo 'Session diconnected by the network'
@@ -613,28 +599,44 @@ proto_atc_setup () {
                     }
                     ;;
 
-
+                +CESQ )
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
+                    rsrp=$(echo $URCvalue | awk -F ',' '{print $6}')
+                    [ $rsrp -lt 20 ] && /usr/bin/modem_led rssi-0 2>/dev/null
+                    [ $rsrp -ge 20 -a $rsrp -lt 44 ] && /usr/bin/modem_led rssi-1 2>/dev/null
+                    [ $rsrp -ge 44 -a $rsrp -lt 68 ] && /usr/bin/modem_led rssi-2 2>/dev/null
+                    [ $rsrp -ge 68 ] && /usr/bin/modem_led rssi-3 2>/dev/null
+                    ;;
 
                 +CMTI )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     sms_index=$(echo $URCvalue | awk -F ',' '{print $2}')
                     COMMAND='AT+CMGR='$sms_index gcom -d "$device" -s /etc/gcom/at.gcom
                     ;;
 
                 +CMGR )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
-                    sms_sender=$(echo $URCvalue | awk -F ',' '{print $2}')
-                    sms_date=$(echo $URCvalue | awk -F ',' '{print $4}')
-                    sms_date=$(echo $sms_date | awk -F '/' '{print $1 $2 $3}' | sed -e 's/ /_/g' | sed -e 's/://g')
-                    sms_date=${sms_date:: -3}
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     OK_received=11
                     ;;
 
+                +CMGS )
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
+                    echo 'SMS successfully sent'
+                    ;;
+
                 OK )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
+                    [ $OK_received -eq 12 ] && {
+                        [ $sms_index -gt 1 ] && {
+                            sms_index=$((sms_index-1))
+                            COMMAND='AT+CMGR='$sms_index gcom -d "$device" -s /etc/gcom/at.gcom
+                        } || {
+                            OK_received=0
+                        }
+                    }
                     [ $OK_received -eq 11 ] && {
                         COMMAND='AT+CMGD='$sms_index gcom -d "$device" -s /etc/gcom/at.gcom
-                        OK_received=3
+                        OK_received=12
                     }
                     [ $OK_received -eq 10 -a $pdp_still_active -eq 0 ] && {
                         echo 'Session diconnected by the network'
@@ -642,9 +644,9 @@ proto_atc_setup () {
                         COMMAND='AT+CGACT=1,1' gcom -d "$device" -s /etc/gcom/at.gcom
                         echo 'Activate session'
                     }
-                    [ $OK_received -eq 9 -a $pdp_still_active -eq 0 ] && {
-                        echo 'Activate session'
-                        COMMAND='AT+CGACT=1,1' gcom -d "$device" -s /etc/gcom/at.gcom
+                    [ $OK_received -eq 9 ] && {
+                        [ $new_rat = 'WCDMA' ] && COMMAND='AT+CGACT=1,1' gcom -d "$device" -s /etc/gcom/at.gcom
+                        OK_received=1
                     }
                     [ $OK_received -eq 4 ] && {
                         proto_init_update "$ifname" 1
@@ -655,10 +657,13 @@ proto_atc_setup () {
                         proto_send_update "$interface"
                         [ -n "$v4address" ] && update_IPv4
                         [ -n "$v6address" ] && update_DHCPv6
+                        COMMAND='AT+CESQ' gcom -d "$device" -s /etc/gcom/at.gcom
                         OK_received=0
                     }
                     [ $OK_received -eq 3 ] && {
                         COMMAND='AT+GTRNDIS=1,1' gcom -d "$device" -s /etc/gcom/at.gcom
+# Connected LED
+                        /usr/bin/modem_led connected_$new_rat 2>/dev/null
                         OK_received=4
                     }
                     [ $OK_received -eq 2 ] && {
@@ -666,8 +671,6 @@ proto_atc_setup () {
                     }
                     [ $OK_received -eq 1 -a $pdp_still_active -eq 0 ] && {
                         echo 'Activate session'
-# Connected LED
-                        /usr/bin/modem_led connected 2>/dev/null
                         COMMAND='AT+CGPADDR=1' gcom -d "$device" -s /etc/gcom/at.gcom
                     }
                     [ $OK_received -eq 1 -a $pdp_still_active -eq 1 ] && {
@@ -676,14 +679,12 @@ proto_atc_setup () {
                     ;;
 
                 * )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     [ $OK_received -eq 11 ] && {
-                        sms_text=$URCline
-                        sms_text=$(ucs2TOascii $sms_text)
-                        echo 'SMS recieved from '$sms_sender
-                        echo $sms_sender > $sms_rx_folder'/sms_'$sms_date
-                        echo -e $sms_text >> $sms_rx_folder'/sms_'$sms_date
-                        /usr/bin/atc_rx_sms.sh $sms_rx_folder'/sms_'$sms_date 2> /dev/null
+                        sms_pdu=$URCline
+                        echo 'SMS received'
+                        [ "$atc_debug" -gt 1 ] && echo $sms_pdu >> /var/sms/pdus 2> /dev/null
+                        /usr/bin/atc_rx_pdu_sms $sms_pdu 2> /dev/null
                     }
                     ;;
             esac
