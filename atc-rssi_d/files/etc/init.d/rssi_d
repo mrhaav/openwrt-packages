@@ -9,7 +9,7 @@ USE_PROCD=1
 
 start_service() {
     procd_open_instance
-    procd_set_param command sh "/usr/bin/rssi_d.sh"
+    procd_set_param command /usr/bin/rssi_d
     procd_close_instance
 }
 
