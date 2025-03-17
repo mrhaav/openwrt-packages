@@ -200,6 +200,8 @@ proto_atc_setup () {
 
     mkdir -p $sms_rx_folder
 
+# Stop rssi daemon
+    /etc/init.d/rssi_d stop 2> /dev/null
 # Boot LED
     /usr/bin/modem_led boot 2>/dev/null
 
@@ -593,6 +595,8 @@ proto_atc_setup () {
                     pdp_still_active=$(echo $URCvalue | awk -F ',' '{print $1}')
                     [ $pdp_still_active -eq 0 ] && {
                         echo 'Session diconnected by the network'
+# Stop rssi daemon
+                        /etc/init.d/rssi_d stop 2> /dev/null
 # Searching LED
                         /usr/bin/modem_led searching 2>/dev/null
                         release_interface
@@ -602,10 +606,7 @@ proto_atc_setup () {
                 +CESQ )
                     [ "$atc_debug" -ge 1 ] && echo $URCline
                     rsrp=$(echo $URCvalue | awk -F ',' '{print $6}')
-                    [ $rsrp -lt 20 ] && /usr/bin/modem_led rssi-0 2>/dev/null
-                    [ $rsrp -ge 20 -a $rsrp -lt 44 ] && /usr/bin/modem_led rssi-1 2>/dev/null
-                    [ $rsrp -ge 44 -a $rsrp -lt 68 ] && /usr/bin/modem_led rssi-2 2>/dev/null
-                    [ $rsrp -ge 68 ] && /usr/bin/modem_led rssi-3 2>/dev/null
+                    /usr/bin/modem_led rssi $rsrp 2>/dev/null
                     ;;
 
                 +CMTI )
@@ -641,6 +642,8 @@ proto_atc_setup () {
                     [ $OK_received -eq 10 -a $pdp_still_active -eq 0 ] && {
                         echo 'Session diconnected by the network'
                         release_interface
+# Stop rssi daemon
+                        /etc/init.d/rssi_d stop 2> /dev/null
                         COMMAND='AT+CGACT=1,1' gcom -d "$device" -s /etc/gcom/at.gcom
                         echo 'Activate session'
                     }
@@ -657,6 +660,8 @@ proto_atc_setup () {
                         proto_send_update "$interface"
                         [ -n "$v4address" ] && update_IPv4
                         [ -n "$v6address" ] && update_DHCPv6
+# Start rssi daemon
+                        /etc/init.d/rssi_d start 2> /dev/null
                         COMMAND='AT+CESQ' gcom -d "$device" -s /etc/gcom/at.gcom
                         OK_received=0
                     }
