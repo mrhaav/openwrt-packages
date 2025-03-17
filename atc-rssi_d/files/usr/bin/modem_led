@@ -1,0 +1,89 @@
+#!/bin/sh
+#
+# leds for ASUS 4G-AX56
+
+led_status=$1
+
+# LED names
+red=/sys/class/leds/red:modem/trigger
+yellow=/sys/class/leds/yellow:modem/trigger
+blue=/sys/class/leds/blue:modem/trigger
+white=/sys/class/leds/white:modem/trigger
+
+RSSI_1=white:rssi-1
+RSSI_2=white:rssi-2
+RSSI_3=white:rssi-3
+
+
+case $led_status in
+
+    boot )
+        echo default-on > $red
+        echo none > $yellow
+        echo none > $blue
+        echo none > $white
+        ;;
+
+    config )
+        echo none > $red
+        echo default-on > $yellow
+        echo none > $blue
+        echo none > $white
+        ;;
+
+    searching )
+        echo none > $red
+        echo timer > $yellow
+        echo none > $blue
+        echo none > $white
+        ;;
+
+    connected_WCDMA )
+        echo none > $red
+        echo none > $yellow
+        echo default-on > $blue
+        echo none > $white
+        ;;
+
+    connected_LTE )
+        echo none > $red
+        echo none > $yellow
+        echo none > $blue
+        echo default-on > $white
+        ;;
+
+    rssi-0 )
+        echo none > /sys/class/leds/${RSSI_3}/trigger
+        echo none > /sys/class/leds/${RSSI_2}/trigger
+        echo none > /sys/class/leds/${RSSI_1}/trigger
+        ;;
+
+    rssi-1 )
+        echo none > /sys/class/leds/${RSSI_3}/trigger
+        echo none > /sys/class/leds/${RSSI_2}/trigger
+        echo default-on > /sys/class/leds/${RSSI_1}/trigger
+        ;;
+
+    rssi-2 )
+        echo none > /sys/class/leds/${RSSI_3}/trigger
+        echo default-on > /sys/class/leds/${RSSI_2}/trigger
+        echo default-on > /sys/class/leds/${RSSI_1}/trigger
+        ;;
+
+    rssi-3 )
+        echo default-on > /sys/class/leds/${RSSI_3}/trigger
+        echo default-on > /sys/class/leds/${RSSI_2}/trigger
+        echo default-on > /sys/class/leds/${RSSI_1}/trigger
+        ;;
+
+    off )
+        echo none > $red
+        echo none > $yellow
+        echo none > $blue
+        echo none > $white
+        echo none > /sys/class/leds/${RSSI_3}/trigger
+        echo none > /sys/class/leds/${RSSI_2}/trigger
+        echo none > /sys/class/leds/${RSSI_1}/trigger
+        ;;
+
+esac
