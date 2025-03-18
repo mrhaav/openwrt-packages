@@ -662,7 +662,6 @@ proto_atc_setup () {
                         [ -n "$v6address" ] && update_DHCPv6
 # Start rssi daemon
                         /etc/init.d/rssi_d start 2> /dev/null
-                        COMMAND='AT+CESQ' gcom -d "$device" -s /etc/gcom/at.gcom
                         OK_received=0
                     }
                     [ $OK_received -eq 3 ] && {
