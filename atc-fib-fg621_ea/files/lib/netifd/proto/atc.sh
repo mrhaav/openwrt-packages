@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # AT commands for Fibocom FG621-EA modem
-# 2025-03-17 by mrhaav
+# 2025-03-18 by mrhaav
 #
 
 
@@ -604,7 +604,7 @@ proto_atc_setup () {
                     ;;
 
                 +CESQ )
-                    [ "$atc_debug" -ge 1 ] && echo $URCline
+                    [ "$atc_debug" -gt 1 ] && echo $URCline
                     rsrp=$(echo $URCvalue | awk -F ',' '{print $6}')
                     /usr/bin/modem_led rssi $rsrp 2>/dev/null
                     ;;
@@ -626,7 +626,7 @@ proto_atc_setup () {
                     ;;
 
                 OK )
-                    [ "$atc_debug" -ge 1 ] && echo $URCline
+                    [ "$atc_debug" -gt 1 ] && echo $URCline
                     [ $OK_received -eq 12 ] && {
                         [ $sms_index -gt 1 ] && {
                             sms_index=$((sms_index-1))
@@ -684,7 +684,8 @@ proto_atc_setup () {
                     ;;
 
                 * )
-                    [ "$atc_debug" -ge 1 ] && echo $URCline
+                    [ "$atc_debug" -eq 2 ] && echo $URCline
+                    [ "$atc_debug" -eq 1 -a $URCline != 'AT+CESQ' ] && echo $URCline
                     [ $OK_received -eq 11 ] && {
                         sms_pdu=$URCline
                         echo 'SMS received'
