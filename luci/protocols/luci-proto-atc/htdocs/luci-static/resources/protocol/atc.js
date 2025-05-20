@@ -67,7 +67,13 @@ return network.registerProtocol('atc', {
 			}, this));
 		};
 
-		o = s.taboption('general', form.Value, 'apn', _('APN'));
+		o = s.taboption('general', form.Flag, 'auto_apn', _('Auto APN detection'),
+   	 	_('Automatically detect APN based on SIM MCC/MNC. May require atc-apn-database package.'));
+		o.default = o.enabled;
+
+		o = s.taboption('general', form.Value, 'apn', _('APN'),
+			_('Access Point Name. Only used when auto-detection is disabled.'));
+		o.depends('auto_apn', '0');
 		o.validate = function(section_id, value) {
 			if (value == null || value == '')
 				return true;
@@ -76,7 +82,7 @@ return network.registerProtocol('atc', {
 				return _('Invalid APN provided');
 			return true;
 		};
-
+		
 		o = s.taboption('general', form.Value, 'pincode', _('PIN'));
 		o.datatype = 'and(uinteger,minlength(4),maxlength(8))';
 
