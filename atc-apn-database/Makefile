@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=atc-apn-database
 PKG_VERSION:=20250521
-PKG_RELEASE:=1.21
+PKG_RELEASE:=1.22
 
 PKG_MAINTAINER:=SuperKali <hello@superkali.me>
 PKG_LICENSE:=MIT

@@ -174,13 +174,20 @@ get_apn_from_mccmnc() {
     
     if [ -n "$section" ]; then
         local auto_apn=$(echo "$section" | grep "\"apn\":" | head -1 | sed 's/.*"apn": *"\([^"]*\)".*/\1/')
-        local auto_username=$(echo "$section" | grep "\"username\":" | head -1 | sed 's/.*"username": *"\([^"]*\)".*/\1/')
-        local auto_password=$(echo "$section" | grep "\"password\":" | head -1 | sed 's/.*"password": *"\([^"]*\)".*/\1/')
-        local auto_auth=$(echo "$section" | grep "\"auth\":" | head -1 | sed 's/.*"auth": *"\([^"]*\)".*/\1/')
-        local auto_carrier=$(echo "$section" | grep "\"carrier\":" | head -1 | sed 's/.*"carrier": *"\([^"]*\)".*/\1/')
+        local auto_username=$(echo "$section" | grep "\"username\":" | head -1 | sed 's/.*"username": *"\([^"]*\)".*/\1/' 2>/dev/null)
+        local auto_password=$(echo "$section" | grep "\"password\":" | head -1 | sed 's/.*"password": *"\([^"]*\)".*/\1/' 2>/dev/null)
+        local auto_auth=$(echo "$section" | grep "\"auth\":" | head -1 | sed 's/.*"auth": *"\([^"]*\)".*/\1/' 2>/dev/null)
+        local auto_carrier=$(echo "$section" | grep "\"carrier\":" | head -1 | sed 's/.*"carrier": *"\([^"]*\)".*/\1/' 2>/dev/null)
         
         if [ -n "$auto_apn" ]; then
-            echo "$auto_apn|$auto_username|$auto_password|$auto_auth|$auto_carrier"
+            local result="$auto_apn"
+            
+            [ -n "$auto_username" ] && result="$result|$auto_username" || result="$result|"
+            [ -n "$auto_password" ] && result="$result|$auto_password" || result="$result|"
+            [ -n "$auto_auth" ] && result="$result|$auto_auth" || result="$result|"
+            [ -n "$auto_carrier" ] && result="$result|$auto_carrier" || result="$result|"
+            
+            echo "$result"
             return 0
         fi
     fi
@@ -210,13 +217,74 @@ get_mcc_mnc() {
             mnc=${imsi:3:2}
         fi
         
-        [ "$atc_debug" -ge 1 ] && logger -t atc "SIM IMSI: $imsi, MCC: $mcc, MNC: $mnc, MNC length: $mnc_length"
+        [ "$atc_debug" -ge 1 ] && echo "SIM IMSI: $imsi, MCC: $mcc, MNC: $mnc, MNC length: $mnc_length"
         
         echo "$mcc $mnc"
         return 0
     fi
     
-    logger -t atc "Failed to obtain IMSI from SIM"
+    echo "Failed to obtain IMSI from SIM"
+    return 1
+}
+
+detect_and_set_apn() {
+    local device="$1"
+    local current_apn="$2"
+    
+    if [ "$auto_apn" = "1" ] || [ -z "$current_apn" ]; then
+        echo "Auto APN detection enabled"
+    
+        if [ -n "$device" ] && [ -c "$device" ]; then
+            mcc_mnc=$(get_mcc_mnc "$device")
+            
+            if [ -n "$mcc_mnc" ]; then
+                mcc=$(echo $mcc_mnc | awk '{print $1}')
+                mnc=$(echo $mcc_mnc | awk '{print $2}')
+                
+                apn_details=$(get_apn_from_mccmnc "$mcc" "$mnc")
+
+                if [ -n "$apn_details" ]; then
+                    if [ -z "$current_apn" ] || [ "$auto_apn" = "1" ]; then
+                        auto_apn_name=$(echo "$apn_details" | cut -d'|' -f1)
+                        auto_username=$(echo "$apn_details" | cut -d'|' -f2)
+                        auto_password=$(echo "$apn_details" | cut -d'|' -f3)
+                        auto_auth=$(echo "$apn_details" | cut -d'|' -f4)
+                        auto_carrier=$(echo "$apn_details" | cut -d'|' -f5)
+                        
+                        if [ -n "$auto_apn_name" ]; then
+                            apn="$auto_apn_name"
+                            
+                            [ -z "$username" -a -n "$auto_username" ] && username="$auto_username"
+                            [ -z "$password" -a -n "$auto_password" ] && password="$auto_password"
+                            [ -z "$auth" -a -n "$auto_auth" ] && auth="$auto_auth"
+                            
+                            echo "Auto-detected APN: $apn for carrier: $auto_carrier (MCC:$mcc MNC:$mnc)"
+                            
+                            at_cmd="AT+CGDCONT=1,\"$pdp\",\"$apn\""
+                            atOut=$(COMMAND="$at_cmd" gcom -d "$device" -s /etc/gcom/run_at.gcom)
+                            [ "$atOut" != 'OK' ] && echo $atOut
+                            
+                            if [ -n "$username" ] || [ -n "$password" ] || [ -n "$auth" ]; then
+                                [ -z "$auth" ] && auth="0"
+                                at_cmd="AT+EIAAPN=\"$apn\",0,\"$pdp\",\"$pdp\",$auth,\"$username\",\"$password\""
+                                atOut=$(COMMAND="$at_cmd" gcom -d "$device" -s /etc/gcom/run_at.gcom)
+                                [ "$atOut" != 'OK' ] && echo $atOut
+                            fi
+                            
+                            return 0
+                        fi
+                    fi
+                else
+                    echo "No APN found in database for MCC:$mcc MNC:$mnc"
+                fi
+            else
+                [ "$atc_debug" -ge 1 ] && echo "Failed to determine MCC/MNC from SIM"
+            fi
+        else
+            [ "$atc_debug" -ge 1 ] && echo "Device not ready for auto APN detection"
+        fi
+    fi
+    
     return 1
 }
 
@@ -383,47 +451,7 @@ proto_atc_setup () {
     [ "$atOut" != 'OK' ] && echo $atOut
 
 # Auto profile discovery
-    if [ "$auto_apn" = "1" ] || [ -z "$apn" ]; then
-        logger -t atc "Auto APN detection enabled"
-    
-        if [ -n "$device" ] && [ -c "$device" ]; then
-            mcc_mnc=$(get_mcc_mnc "$device")
-            
-            if [ -n "$mcc_mnc" ]; then
-                mcc=$(echo $mcc_mnc | awk '{print $1}')
-                mnc=$(echo $mcc_mnc | awk '{print $2}')
-                
-                apn_details=$(get_apn_from_mccmnc "$mcc" "$mnc")
-
-                if [ -n "$apn_details" ]; then
-                    if [ -z "$apn" ] || [ "$auto_apn" = "1" ]; then
-                        auto_apn_name=$(echo "$apn_details" | cut -d'|' -f1)
-                        auto_username=$(echo "$apn_details" | cut -d'|' -f2)
-                        auto_password=$(echo "$apn_details" | cut -d'|' -f3)
-                        auto_auth=$(echo "$apn_details" | cut -d'|' -f4)
-                        auto_carrier=$(echo "$apn_details" | cut -d'|' -f5)
-                        
-                        if [ -n "$auto_apn_name" ]; then
-                            apn="$auto_apn_name"
-                            
-                            [ -z "$username" -a -n "$auto_username" ] && username="$auto_username"
-                            [ -z "$password" -a -n "$auto_password" ] && password="$auto_password"
-                            [ -z "$auth" -a -n "$auto_auth" ] && auth="$auto_auth"
-                            
-                            logger -t atc "Auto-detected APN: $apn for carrier: $auto_carrier (MCC:$mcc MNC:$mnc)"
-                        fi
-                    fi
-                else
-                    logger -t atc "No APN found in database for MCC:$mcc MNC:$mnc"
-                fi
-            else
-                [ "$atc_debug" -ge 1 ] && logger -t atc "Failed to determine MCC/MNC from SIM"
-            fi
-        else
-            [ "$atc_debug" -ge 1 ] && logger -t atc "Device not ready for auto APN detection"
-        fi
-    fi
-
+    detect_and_set_apn "$device" "$apn"
 
 # Configure PDPcontext, initial profile and profile 1
     atOut=$(COMMAND='AT+EIAAPN="'$apn'"',0,'"'$pdp'","'$pdp'",'$auth',"'$username'","'$password'"' gcom -d "$device" -s /etc/gcom/run_at.gcom)
@@ -714,10 +742,26 @@ proto_atc_setup () {
                     [ $OK_received -eq 10 -a $pdp_still_active -eq 0 ] && {
                         echo 'Session diconnected by the network'
                         release_interface
+
+                        echo 'Detecting APN for reconnection...'
+                        if detect_and_set_apn "$device" "$apn"; then
+                            echo 'Successfully detected and set APN for reconnection'
+                        else
+                            echo 'Using previously configured APN for reconnection'
+                        fi
+
                         COMMAND='AT+CGACT=1,1' gcom -d "$device" -s /etc/gcom/at.gcom
                         echo 'Activate session'
                     }
                     [ $OK_received -eq 9 -a $pdp_still_active -eq 0 ] && {
+
+                        echo 'Detecting APN for reconnection...'
+                        if detect_and_set_apn "$device" "$apn"; then
+                            echo 'Successfully detected and set APN for reconnection'
+                        else
+                            echo 'Using previously configured APN for reconnection'
+                        fi
+
                         echo 'Activate session'
                         COMMAND='AT+CGACT=1,1' gcom -d "$device" -s /etc/gcom/at.gcom
                     }

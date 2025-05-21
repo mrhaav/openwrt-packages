@@ -14,17 +14,11 @@ def clean_value(value):
         return ""
     return value
 
-def map_auth_type(auth_type):
-    """Maps authentication type strings to numeric values"""
-    auth_map = {
-        "": "0",
-        "none": "0",
-        "pap": "1",
-        "chap": "2",
-        "pap chap": "3",
-        "chap pap": "3"
-    }
-    return auth_map.get(auth_type.lower(), "0")
+def get_auth_type(auth_type):
+    """Gets authentication type numeric value"""
+    if not auth_type:
+        return "0"
+    return auth_type
 
 def process_apns_file(xml_file, json_file):
     """Processes the AOSP APN XML file and converts it to a JSON database"""
@@ -56,19 +50,34 @@ def process_apns_file(xml_file, json_file):
             
             username = clean_value(apn.get('user'))
             password = clean_value(apn.get('password'))
-            auth_type = map_auth_type(clean_value(apn.get('authtype', '')))
+            auth_type = get_auth_type(clean_value(apn.get('authtype')))
             carrier = clean_value(apn.get('carrier'))
             
-            carrier_count[carrier or "Unknown"] += 1
+            if carrier:
+                carrier_count[carrier] += 1
+            else:
+                carrier_count["Unknown"] += 1
             
-            all_apns[key].append({
-                "apn": apn_name,
-                "username": username,
-                "password": password,
-                "auth": auth_type,
-                "carrier": carrier,
-                "type": apn_type
-            })
+            apn_entry = {
+                "apn": apn_name
+            }
+            
+            if username:
+                apn_entry["username"] = username
+                
+            if password:
+                apn_entry["password"] = password
+                
+            if auth_type != "0":
+                apn_entry["auth"] = auth_type
+                
+            if carrier:
+                apn_entry["carrier"] = carrier
+                
+            if apn_type:
+                apn_entry["type"] = apn_type
+            
+            all_apns[key].append(apn_entry)
         
         for key, apns in all_apns.items():
             data_apns = []
