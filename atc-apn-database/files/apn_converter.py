@@ -26,46 +26,6 @@ def map_auth_type(auth_type):
     }
     return auth_map.get(auth_type.lower(), "0")
 
-def optimal_apn_score(apn_entry, all_apns_for_mcc_mnc):
-    """Scores APNs based on analysis of the Android AOSP APN database patterns"""
-    score = 0
-    apn_name = apn_entry.get('apn', '').lower()
-    apn_type = clean_value(apn_entry.get('type', '')).lower()
-    
-    if apn_type:
-        types = apn_type.split(',')
-        if types == ['default'] or set(types) == set(['default', 'supl']):
-            score += 200
-        elif 'default' in types:
-            score += 150
-        elif 'internet' in types:
-            score += 100
-        if any(t in types for t in ['mms', 'ims', 'emergency', 'fota']):
-            score -= 150
-    else:
-        score -= 50
-
-    if len(apn_name) < 10:
-        score += 40
-    
-    internet_patterns = ['internet', 'data', 'web', 'net', 'online', 'gprs']
-    if any(pattern in apn_name for pattern in internet_patterns):
-        score += 50
-    
-    if not any(char.isdigit() for char in apn_name):
-        score += 30
-    
-    if not apn_entry.get('user') and not apn_entry.get('password'):
-        score += 40
-    
-    if not apn_entry.get('proxy') and not apn_entry.get('port'):
-        score += 30
-    
-    if apn_entry.get('protocol') == 'IPV4V6' or apn_entry.get('roaming_protocol') == 'IPV4V6':
-        score += 25
-    
-    return score
-
 def process_apns_file(xml_file, json_file):
     """Processes the AOSP APN XML file and converts it to a JSON database"""
     try:
@@ -73,70 +33,108 @@ def process_apns_file(xml_file, json_file):
         root = tree.getroot()
         
         apn_db = {}
-        apn_scores = {}
         carrier_count = defaultdict(int)
+        total_apns = 0
         
-        mcc_mnc_apns = defaultdict(list)
+        all_apns = defaultdict(list)
+        
         for apn in root.findall('apn'):
+            total_apns += 1
             mcc = clean_value(apn.get('mcc'))
             mnc = clean_value(apn.get('mnc'))
             
             if not mcc or not mnc:
                 continue
-                
+            
             key = f"{mcc}_{mnc}"
-            apn_dict = {attr: clean_value(apn.get(attr)) for attr in 
-                       ['apn', 'user', 'password', 'proxy', 'port', 'mmsc', 
-                        'mmsproxy', 'mmsport', 'type', 'protocol', 
-                        'roaming_protocol', 'carrier']}
             
-            mcc_mnc_apns[key].append(apn_dict)
-        
-        for key, apns in mcc_mnc_apns.items():
-            if not apns:
+            apn_name = clean_value(apn.get('apn'))
+            apn_type = clean_value(apn.get('type'))
+            
+            if not apn_name and not apn_type:
                 continue
-                
-            apn_scores[key] = []
             
-            for apn_dict in apns:
-                apn_name = apn_dict.get('apn')
-                if not apn_name:
+            username = clean_value(apn.get('user'))
+            password = clean_value(apn.get('password'))
+            auth_type = map_auth_type(clean_value(apn.get('authtype', '')))
+            carrier = clean_value(apn.get('carrier'))
+            
+            carrier_count[carrier or "Unknown"] += 1
+            
+            all_apns[key].append({
+                "apn": apn_name,
+                "username": username,
+                "password": password,
+                "auth": auth_type,
+                "carrier": carrier,
+                "type": apn_type
+            })
+        
+        for key, apns in all_apns.items():
+            data_apns = []
+            
+            for apn in apns:
+                apn_type = apn.get('type', '').lower()
+                apn_name = apn.get('apn', '').lower()
+                carrier = apn.get('carrier', '').lower()
+                
+                if apn_type and any(t in apn_type.split(',') for t in ['mms', 'ims', 'emergency', 'xcap', 'ut']):
                     continue
+                
+                if apn_name and any(t in apn_name for t in ['mms', 'ims', 'emergency', 'xcap']):
+                    continue
+                
+                is_data_apn = False
+                
+                if apn_type and any(t in apn_type.split(',') for t in ['default', 'internet', 'supl']):
+                    is_data_apn = True
+                
+                if apn_name and any(t in apn_name for t in ['internet', 'data', 'web', 'net', 'online', 'gprs', 'connect']):
+                    is_data_apn = True
+                
+                if carrier and 'internet' in carrier and not 'mms' in carrier:
+                    is_data_apn = True
+                
+                if is_data_apn:
+                    data_apns.append(apn)
+            
+            selected_apn = None
+            if data_apns:
+                default_apns = [a for a in data_apns if a.get('type') and 'default' in a.get('type').lower()]
+                if default_apns:
+                    selected_apn = default_apns[0]
+                else:
+                    selected_apn = data_apns[0]
+            elif len(apns) > 0:
+                for apn in apns:
+                    apn_type = apn.get('type', '').lower()
+                    apn_name = apn.get('apn', '').lower()
                     
-                carrier = apn_dict.get('carrier', '')
-                carrier_count[carrier or "Unknown"] += 1
+                    if apn_type and ('mms' in apn_type or 'ims' in apn_type):
+                        continue
+                    
+                    if apn_name and ('mms' in apn_name or 'ims' in apn_name):
+                        continue
+                    
+                    selected_apn = apn
+                    break
                 
-                apn_entry = {
-                    "apn": apn_name,
-                    "username": apn_dict.get('user', ''),
-                    "password": apn_dict.get('password', ''),
-                    "auth": map_auth_type(apn_dict.get('authtype', '')),
-                    "carrier": carrier
-                }
+                if not selected_apn and len(apns) > 0:
+                    selected_apn = apns[0]
+            
+            if selected_apn:
+                if 'type' in selected_apn:
+                    del selected_apn['type']
                 
-                score = optimal_apn_score(apn_dict, apns)
-                apn_scores[key].append((score, apn_entry))
-        
-        for key, scores in apn_scores.items():
-            if not scores:
-                continue
-            
-            sorted_scores = sorted(scores, key=lambda x: x[0], reverse=True)
-            best_score, best_apn = sorted_scores[0]
-            
-            if len(sorted_scores) > 1:
-                print(f"MCC+MNC: {key}")
-                for i, (score, apn) in enumerate(sorted_scores[:3]):
-                    print(f"  #{i+1} Score: {score}, APN: {apn['apn']}, Carrier: {apn['carrier']}")
-            
-            apn_db[key] = best_apn
+                apn_db[key] = selected_apn
         
         with open(json_file, 'w') as f:
             json.dump(apn_db, f, indent=2, sort_keys=True)
         
-        print(f"\nConverted {len(apn_db)} unique operators (MCC+MNC)")
-        print(f"Top 10 carriers by APN count:")
-        for carrier, count in sorted(carrier_count.items(), key=lambda x: x[1], reverse=True)[:10]:
+        print(f"\nTotal APNs in file: {total_apns}")
+        print(f"Converted {len(apn_db)} unique operators (MCC+MNC)")
+        print(f"Top 15 carriers by APN count:")
+        for carrier, count in sorted(carrier_count.items(), key=lambda x: x[1], reverse=True)[:15]:
             print(f"  {carrier}: {count}")
             
         return True
