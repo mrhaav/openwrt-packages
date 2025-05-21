@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
  
 PKG_NAME:=atc-fib-fm350_gl
-PKG_VERSION:=2025.02.01
+PKG_VERSION:=2025.05.21
 PKG_RELEASE:=3
 
 PKG_MAINTAINER:=Henrik Ginstmark <henrik@ginstmark.se>
@@ -17,6 +17,7 @@ define Package/$(PKG_NAME)
   SUBMENU:=WWAN
   PKGARCH:=all
   DEPENDS:=+kmod-usb-serial-option +kmod-usb-net-rndis +comgt
+  SUGGESTS:=+atc-apn-database
 endef
 
 define Package/$(PKG_NAME)/description
