@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # AT commands for Fibocom FG621-EA modem
-# 2025-03-18 by mrhaav
+# 2025-06-06 by mrhaav
 #
 
 
@@ -235,26 +235,45 @@ proto_atc_setup () {
     echo 0 > /tmp/modem.status
     echo Initiate modem with interface $ifname
 
-# Set error codes to verbose
-    atOut=$(COMMAND='AT+CMEE=2' gcom -d "$device" -s /etc/gcom/run_at.gcom)
-    while [ $atOut != 'OK' ]
+# Check modem availability and set error codes to verbose
+    atOut=$(COMMAND='AT+CMEE=2' gcom -d "$device" -s /etc/gcom/run_at.gcom 2>&1)
+    while [ "$atOut" != 'OK' ]
     do
-        echo 'Modem not ready yet: '$atOut
+        echo 'Modem not ready yet'
+        [ "$atc_debug" -gt 1 ] && {
+            echo $device
+            [ -n "$(echo "$atOut" | grep 'Error @')" ] && atOut=$(echo "$atOut" | grep 'Error @')
+            echo $atOut
+        }
         sleep 1
-        atOut=$(COMMAND='AT+CMEE=2' gcom -d "$device" -s /etc/gcom/run_at.gcom)
+        atOut=$(COMMAND='AT+CMEE=2' gcom -d "$device" -s /etc/gcom/run_at.gcom 2>&1)
     done
-    
+
 # Check SIMcard and PIN status
-    atOut=$(COMMAND='AT+CPIN?' gcom -d "$device" -s /etc/gcom/getrun_at.gcom | grep CPIN: | awk -F ' ' '{print $2 $3}' | sed -e 's/[\r\n]//g')
-    while [ -z "$atOut" ]
-    do
-        atOut=$(COMMAND='AT+CPIN?' gcom -d "$device" -s /etc/gcom/getrun_at.gcom | grep CPIN: | awk -F ' ' '{print $2 $3}' | sed -e 's/[\r\n]//g')
-    done
+    atOut=$(COMMAND='AT+CPIN?' gcom -d "$device" -s /etc/gcom/getrun_at.gcom)
+    if [ -n "$(echo "$atOut" | grep 'CPIN:')" ]
+    then
+        atOut=$(echo "$atOut" | grep 'CPIN:' | awk -F ':' '{print $2}' | sed -e 's/[\r\n]//g')
+        [ "${atOut::1}" = ' ' ] && atOut=${atOut:1}
+    elif [ -n "$(echo "$atOut" | grep 'CME ERROR:')" ]
+    then
+        atOut=$(echo "$atOut" | grep 'CME ERROR:' | awk -F ':' '{print $2}' | sed -e 's/[\r\n]//g')
+        [ "${atOut::1}" = ' ' ] && atOut=${atOut:1}
+        echo $atOut
+        proto_notify_error "$interface" "$atOut"
+        proto_block_restart "$interface"
+        return 1
+    else
+        echo 'Can not read SIMcard'
+        proto_notify_error "$interface" SIMreadfailure
+        proto_block_restart "$interface"
+        return 1
+    fi
     case $atOut in
         READY )
             echo SIMcard ready
             ;;
-        SIMPIN )
+        'SIM PIN' )
             if [ -z "$pincode" ]
             then
                 echo PINcode required but missing
@@ -368,6 +387,10 @@ proto_atc_setup () {
             }
         done
     }
+
+# Disable modem echo
+    atOut=$(COMMAND='ATE0' gcom -d "$device" -s /etc/gcom/run_at.gcom)
+    [ "$atOut" != 'OK' ] && echo $atOut
 
 # Disable flightmode
     echo Activate modem
@@ -606,6 +629,7 @@ proto_atc_setup () {
                 +CESQ )
                     [ "$atc_debug" -gt 1 ] && echo $URCline
                     rsrp=$(echo $URCvalue | awk -F ',' '{print $6}')
+                    [ $rsrp -ne 255 ] && rsrp=$((100*rsrp/97)) || rsrp=0
                     /usr/bin/modem_led rssi $rsrp 2>/dev/null
                     ;;
 
@@ -683,8 +707,7 @@ proto_atc_setup () {
                     ;;
 
                 * )
-                    [ "$atc_debug" -eq 2 ] && echo $URCline
-                    [ "$atc_debug" -eq 1 -a $URCline != 'AT+CESQ' ] && echo $URCline
+                    [ "$atc_debug" -gt 1 ] && echo $URCline
                     [ $OK_received -eq 11 ] && {
                         sms_pdu=$URCline
                         echo 'SMS received'
