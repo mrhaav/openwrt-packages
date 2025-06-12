@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # AT commands for Fibocom FG621-EA modem
-# 2025-06-06 by mrhaav
+# 2025-06-12 by mrhaav
 #
 
 
