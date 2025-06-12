@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # AT commands for Fibocom FM350-GL modem
-# 2025-02-01 by mrhaav
+# 2025-06-12 by mrhaav
 #
 
 
@@ -584,6 +584,7 @@ proto_atc_setup () {
                 OK )
                     [ "$atc_debug" -gt 1 ] && echo $URCline
                     [ $OK_received -eq 12 ] && {
+                        /usr/bin/atc_rx_pdu_sms $sms_pdu 2> /dev/null
                         [ $sms_index -gt 1 ] && {
                             sms_index=$((sms_index-1))
                             COMMAND='AT+CMGR='$sms_index gcom -d "$device" -s /etc/gcom/at.gcom
@@ -622,7 +623,6 @@ proto_atc_setup () {
                         sms_pdu=$URCline
                         echo 'SMS received'
                         [ "$atc_debug" -gt 1 ] && echo $sms_pdu >> /var/sms/pdus 2> /dev/null
-                        /usr/bin/atc_rx_pdu_sms $sms_pdu 2> /dev/null
                     }
                     ;;
             esac
