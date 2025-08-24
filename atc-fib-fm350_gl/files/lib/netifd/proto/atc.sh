@@ -179,7 +179,6 @@ proto_atc_init_config() {
 
 proto_atc_setup () {
     local interface="$1"
-    local sms_rx_folder=/var/sms/rx
     local OK_received=0
     local re_connect=0
     local pdp_still_active=0
@@ -189,8 +188,6 @@ proto_atc_setup () {
     json_get_vars device ifname apn pdp pincode auth username password delay atc_debug v6dns_ra $PROTO_DEFAULT_OPTIONS
 
     local custom_at=$(uci get network.${interface}.custom_at 2>/dev/null)
-
-    mkdir -p $sms_rx_folder
 
     [ -z "$delay" ] && delay=15
     [ ! -f /var/fm350.status ] && {
@@ -234,16 +231,30 @@ proto_atc_setup () {
     done
     
 # Check SIMcard and PIN status
-    atOut=$(COMMAND='AT+CPIN?' gcom -d "$device" -s /etc/gcom/getrun_at.gcom | grep CPIN: | awk -F ' ' '{print $2 $3}' | sed -e 's/[\r\n]//g')
-    while [ -z "$atOut" ]
-    do
-        atOut=$(COMMAND='AT+CPIN?' gcom -d "$device" -s /etc/gcom/getrun_at.gcom | grep CPIN: | awk -F ' ' '{print $2 $3}' | sed -e 's/[\r\n]//g')
-    done
+    atOut=$(COMMAND='AT+CPIN?' gcom -d "$device" -s /etc/gcom/getrun_at.gcom)
+    if [ -n "$(echo "$atOut" | grep 'CPIN:')" ]
+    then
+        atOut=$(echo "$atOut" | grep 'CPIN:' | awk -F ':' '{print $2}' | sed -e 's/[\r\n]//g')
+        [ "${atOut::1}" = ' ' ] && atOut=${atOut:1}
+    elif [ -n "$(echo "$atOut" | grep 'CME ERROR:')" ]
+    then
+        atOut=$(echo "$atOut" | grep 'CME ERROR:' | awk -F ':' '{print $2}' | sed -e 's/[\r\n]//g')
+        [ "${atOut::1}" = ' ' ] && atOut=${atOut:1}
+        echo $atOut
+        proto_notify_error "$interface" "$atOut"
+        proto_block_restart "$interface"
+        return 1
+    else
+        echo 'Can not read SIMcard'
+        proto_notify_error "$interface" SIMreadfailure
+        proto_block_restart "$interface"
+        return 1
+    fi
     case $atOut in
         READY )
             echo SIMcard ready
             ;;
-        SIMPIN )
+        'SIM PIN' )
             if [ -z "$pincode" ]
             then
                 echo PINcode required but missing
@@ -430,7 +441,7 @@ proto_atc_setup () {
                     ;;
                 
                 +COPS )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     cops_format=$(echo $URCvalue | awk -F ',' '{print $2}')
                     [ $cops_format -eq 0 ] && {
                         operator=$(echo $URCvalue | awk -F ',' '{print $3}' | sed -e 's/"//g')
@@ -446,7 +457,7 @@ proto_atc_setup () {
                     ;;
                 
                 +CGEV )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     case $URCvalue in
                         'EPS PDN DEACT'*|'NW PDN DEACT'* )
                             echo Session disconnected
@@ -464,7 +475,7 @@ proto_atc_setup () {
                     ;;
         
                 +CGPADDR )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     v4address=""
                     v6address=""
                     URCvalue=$(echo $URCvalue | sed -e 's/"//g')
@@ -490,7 +501,7 @@ proto_atc_setup () {
                     ;;
 
                 +EONSNWNAME )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     [ $re_connect -eq 0 ] && {
                         COMMAND='AT+COPS=3,0;+COPS?;+COPS=3,2;+COPS?' gcom -d "$device" -s /etc/gcom/at.gcom
                         re_connect=1
@@ -510,12 +521,12 @@ proto_atc_setup () {
                     ;;
 
                 +CGACT )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     pdp_still_active=$(echo $URCvalue | awk -F ',' '{print $2}')
                     ;;
 
                 '+CME ERROR' )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     [ "$URCvalue" = '5847' ] && {
                         COMMAND='AT+CGACT=1,1' gcom -d "$device" -s /etc/gcom/at.gcom
                     }
@@ -531,7 +542,7 @@ proto_atc_setup () {
                     ;;
 
                 +CGCONTRDP )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     [ -z "$used_apn" ] && {
                         used_apn=$(echo $URCvalue | awk -F ',' '{print $3}')
                         used_apn=$(full_apn $used_apn)
@@ -566,13 +577,13 @@ proto_atc_setup () {
                     ;;
 
                 +CMTI )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     sms_index=$(echo $URCvalue | awk -F ',' '{print $2}')
                     COMMAND='AT+CMGR='$sms_index gcom -d "$device" -s /etc/gcom/at.gcom
                     ;;
 
                 +CMGR )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     OK_received=11
                     ;;
 
@@ -618,11 +629,11 @@ proto_atc_setup () {
                     ;;
 
                 * )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     [ $OK_received -eq 11 ] && {
                         sms_pdu=$URCline
                         echo 'SMS received'
-                        [ "$atc_debug" -gt 1 ] && echo $sms_pdu >> /var/sms/pdus 2> /dev/null
+                        [ "$atc_debug" -gt 1 ] && echo $sms_pdu >> /var/sms/pdus 2>/dev/null
                     }
                     ;;
             esac
