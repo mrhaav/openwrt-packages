@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
  
 PKG_NAME:=atc-fib-fm350_gl
-PKG_VERSION:=2025.06.12
+PKG_VERSION:=2025.08.24
 PKG_RELEASE:=3
 
 PKG_MAINTAINER:=Henrik Ginstmark <henrik@ginstmark.se>
