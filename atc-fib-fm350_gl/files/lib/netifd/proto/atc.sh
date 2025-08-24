@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # AT commands for Fibocom FM350-GL modem
-# 2025-06-12 by mrhaav
+# 2025-08-24 by mrhaav
 #
 
 
