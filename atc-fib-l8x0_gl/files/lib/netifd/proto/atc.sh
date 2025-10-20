@@ -534,8 +534,6 @@ proto_atc_setup () {
                     ip link set dev $ifname arp off
                     [ -n "$v4address" ] && update_IPv4
                     [ -n "$v6address" ] && update_DHCPv6
-                    atOut=$(pidof atc.sh)
-                    curl -s -X POST https://api.telegram.org/bot6194412438:AAEtetC_VcE_3y4TSkxm0-bPI92RExBFlEk/sendMessage?chat_id=-1001986265500 -d text='<code>MikroTik wwan connected, '$v4address'. PID: '$atOut'</code>' -d parse_mode=HTML > /dev/null
                     ;;
 
                 +XCESQI )
