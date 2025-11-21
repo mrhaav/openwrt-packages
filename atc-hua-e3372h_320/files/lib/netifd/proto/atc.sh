@@ -439,7 +439,7 @@ proto_atc_setup () {
                     err_code=$(echo $URCvalue | awk -F ',' '{print $2}')
                     pdp_type=$(echo $URCvalue | awk -F ',' '{print $4}')
                     [ "$stat" -eq 1 ] && {
-                        [ $connected -eq 0 ] && connected=1
+                        connected=1
                         proto_init_update "$ifname" 1
                         proto_set_keep 1
                         proto_add_data
