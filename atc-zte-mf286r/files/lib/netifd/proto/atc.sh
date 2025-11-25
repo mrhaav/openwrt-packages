@@ -283,7 +283,7 @@ proto_atc_setup () {
         echo $model
         echo $fw
     }
-    if [ -n "$(echo "$manufactor" | grep 'Marwell')" ] && [ -n "$(echo "$model" | grep 'MF286R')" ]
+    if [ -n "$(echo "$manufactor" | grep 'Marwell')" ] && [ -n "$(echo "$model" | grep 'LINUX')" ] && [ -n "$(echo "$fw" | grep 'MF286')" ] 
     then
         :
     else
