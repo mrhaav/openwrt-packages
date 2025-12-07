@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
  
 PKG_NAME:=atc-zte-mf286r
-PKG_VERSION:=2025-11-15
+PKG_VERSION:=2025-12-07
 PKG_RELEASE:=0.1
 
 PKG_MAINTAINER:=Henrik Ginstmark <henrik@ginstmark.se>
