@@ -2,8 +2,8 @@
 include $(TOPDIR)/rules.mk
  
 PKG_NAME:=atc-fib-l8x0_gl
-PKG_VERSION:=2025-09-06
-PKG_RELEASE:=0.3
+PKG_VERSION:=2025.09.06
+PKG_RELEASE:=3
 
 PKG_MAINTAINER:=Henrik Ginstmark <henrik@ginstmark.se>
 PKG_LICENSE:=GPL-2.0
