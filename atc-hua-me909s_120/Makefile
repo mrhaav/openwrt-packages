@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
  
 PKG_NAME:=atc-hua-me909s_120
-PKG_VERSION:=2024.11.26
+PKG_VERSION:=2026.02.26
 PKG_RELEASE:=1
 
 PKG_MAINTAINER:=Henrik Ginstmark <henrik@ginstmark.se>
