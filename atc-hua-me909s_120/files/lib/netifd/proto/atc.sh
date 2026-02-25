@@ -15,9 +15,8 @@ update_IPv4 () {
     proto_init_update "$ifname" 1
     proto_set_keep 1
     proto_add_ipv4_address "$v4address" "$v4netmask"
-#    proto_add_ipv4_route "$v4gateway" "128"
-#    [ "$defaultroute" = 0 ] || proto_add_ipv4_route "0.0.0.0" 0 "$v4gateway"
-    [ "$defaultroute" = 0 ] || proto_add_ipv4_route "0.0.0.0" 0 "$v4gateway" "$v4address"/32
+    proto_add_ipv4_route "$v4gateway" "128"
+    [ "$defaultroute" = 0 ] || proto_add_ipv4_route "0.0.0.0" 0 "$v4gateway"
     [ "$peerdns" = 0 ] || {
         proto_add_dns_server "$v4dns1"
         proto_add_dns_server "$v4dns2"
@@ -30,38 +29,6 @@ update_IPv4 () {
     proto_send_update "$interface"
 }
 
-update_DYNv4 () {
-        json_init
-        json_add_string name "${interface}_4"
-        json_add_string ifname "@$interface"
-        json_add_string proto "static"
-        json_add_array ipaddr
-        json_add_string "" "${v4address}/${v4netmask}"
-        json_close_array
-        json_add_string gateway "$v4gateway"
-        [ "$peerdns" = 0 ] || {
-                json_add_array dns
-                json_add_string "" "$v4dns1"
-                json_add_string "" "$v4dns2"
-                json_close_array
-        }
-        json_add_string zone "wan"
-        json_close_object
-        echo JSON: $(json_dump)
-        ubus call network add_dynamic "$(json_dump)"
-}
-
-update_DHCPv4 () {
-	json_init
-	json_add_string name "${interface}_4"
-	json_add_string ifname "@$interface"
-	json_add_string proto "dhcp"
-        proto_add_dynamic_defaults
-        [ -n "$zone" ] && json_add_string zone "$zone"
-        json_close_object
-        [ "$atc_debug" -ge 1 ] && echo JSON: $(json_dump)
-        ubus call network add_dynamic "$(json_dump)"
-}
 update_DHCPv6 () {
     json_init
     json_add_string name "${interface}6"
@@ -79,11 +46,6 @@ update_DHCPv6 () {
     json_close_object
     [ "$atc_debug" -ge 1 ] && echo JSON: $(json_dump)
     ubus call network add_dynamic "$(json_dump)"
-}
-
-release_interface () {
-    proto_init_update "$ifname" 0
-    proto_send_update "$interface"
 }
 
 subnet_calc () {
@@ -113,35 +75,6 @@ subnet_calc () {
     gateway=$((D/y))
     [ $res -eq 1 ] && gateway=$((gateway*y+2)) || gateway=$((gateway*y+1))
     echo $subnet $A.$B.$C.$gateway
-}
-
-IPversion () {
-    local addr
-    local version=NULL
-
-    addr=$(echo $1 | tr -c -d '.' | wc -c)
-    [ $addr -eq 3 ] && version='IPv4'
-    [ $addr -eq 15 ] && version='IPv6'
-
-    echo $version
-}
-
-IPv6_decTOhex () {
-    local ipv6_dec=$1
-    local ipv6_hex
-    local dec_nb h_part l_part
-
-    for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
-    do
-       dec_nb=$(echo $ipv6_dec | awk -F '.' '{print $'$i'}')
-       h_part=$(echo $(($dec_nb/16)))
-       l_part=$(echo $(($dec_nb%16)))
-       ipv6_hex=$ipv6_hex$(printf '%x' $h_part)
-       ipv6_hex=$ipv6_hex$(printf '%x' $l_part)
-       [ $(($i%2)) -eq 0 -a $i -lt 16 ] && ipv6_hex=$ipv6_hex':'
-    done
-
-    echo $ipv6_hex
 }
 
 hua_ip_hex2dec () {
@@ -196,50 +129,26 @@ CxREG () {
     local reg_string=$1
     local lac_tac g_cell_id rat reject_cause
 
-    if [ ${#reg_string} -gt 6 ]
+    if [ ${#reg_string} -gt 4 ]
     then
         lac_tac=$(echo $reg_string | awk -F ',' '{print $2}')
         g_cell_id=$(echo $reg_string | awk -F ',' '{print $3}')
         rat=$(echo $reg_string | awk -F ',' '{print $4}')
-        rat=$(nb_rat $rat)
-#        reject_cause=$(echo $reg_string | awk -F ',' '{print $6}')
+        [ -n "$rat" ] && rat=$(nb_rat $rat) || reg_string=''
+        reject_cause=$(echo $reg_string | awk -F ',' '{print $6}')
+        [ -z "$reject_cause" ] && reject_cause=0
         [ "$rat" = 'WCDMA' ] && {
-            reg_string='RNCid: '$(printf '%d' 0x${g_cell_id:: -4})' LAC:'$(printf '%d' 0x$lac_tac)' CellId:'$(printf '%d' 0x${g_cell_id: -4})
+            reg_string=', RNCid:'$(printf '%d' 0x${g_cell_id:: -4})' LAC:'$(printf '%d' 0x$lac_tac)' CellId:'$(printf '%d' 0x${g_cell_id: -4})
         }
         [ "${rat::3}" = 'LTE' ] && {
-            reg_string='TAC:'$(printf '%d' 0x$lac_tac)' eNodeB:'$(printf '%d' 0x${g_cell_id:: -2})'-'$(printf '%d' 0x${g_cell_id: -2})
+            reg_string=', TAC:'$(printf '%d' 0x$lac_tac)' eNodeB:'$(printf '%d' 0x${g_cell_id:: -2})'-'$(printf '%d' 0x${g_cell_id: -2})
         }
-#        [ "$reject_cause" -gt 0 ] && reg_string=$reg_string' - Reject cause: '$reject_cause
-        echo ', '$reg_string
+        [ "$reject_cause" -gt 0 ] && reg_string=$reg_string' - Reject cause: '$reject_cause
+        [ "$reject_cause" -eq 0 -a "${reg_string::1}" = '0' ] && reg_string=''
     else
-        echo ''
+        reg_string=''
     fi
-}
-
-ucs2TOascii () {
-    local ucs2_string=$1
-    local ascii_string=''
-    local x=0
-    local ucs2_char ucs2_len
-
-    ucs2_len=$((${#ucs2_string}/4*4))
-
-    while [ $x -lt $ucs2_len ]
-    do
-        ucs2_char=$(echo ${ucs2_string:$x:4})
-        [ ${ucs2_char::2} = '00' ] && {
-            [ ${ucs2_char: -2} = '0A' ] && {
-                ascii_string=$ascii_string'\n'
-            } || {
-                ascii_string=$ascii_string$(printf "\\x${ucs2_char: -2}")
-            }
-        } || {
-            ascii_string=$ascii_string'\u'$ucs2_char
-        }
-        x=$(($x+4))
-    done
-    
-    echo $ascii_string
+    echo $reg_string
 }
 
 proto_atc_init_config() {
@@ -254,6 +163,7 @@ proto_atc_init_config() {
     proto_config_add_string "password"
     proto_config_add_string "atc_debug"
     proto_config_add_string "delay"
+    proto_config_add_string "v6dns_ra"
     proto_config_add_defaults
 }
 
@@ -261,17 +171,19 @@ proto_atc_setup () {
     local interface="$1"
     local sms_rx_folder=/var/sms/rx
     local OK_received=0
-    local dual_stack=0
-    local re_connect=0
-    local pdp_still_active=0
-    local atOut manufactor model fw uesd_apn
-    local dns1 dns2 rat new_rat ifname plmn cops_format status sms_index sms_text sms_sender sms_date
-    local devname devpath device apn pdp pincode auth username password delay atc_debug $PROTO_DEFAULT_OPTIONS
-    json_get_vars device ifname apn pdp pincode auth username password delay atc_debug $PROTO_DEFAULT_OPTIONS
+    local connected=0
+    local devname devpath atOut conStatus manufactor model fw rssi
+    local firstASCII URCline URCcommand URCvalue x status rat new_rat cops_format operator plmn used_apn sms_index sms_pdu
+    local dual_stack
+    local device apn pdp pincode auth username password delay atc_debug v6dns_ra $PROTO_DEFAULT_OPTIONS
+
+    json_get_vars device ifname apn pdp pincode auth username password delay atc_debug v6dns_ra $PROTO_DEFAULT_OPTIONS
+
+    local custom_at=$(uci get network.${interface}.custom_at 2>/dev/null)
 
     mkdir -p $sms_rx_folder
 
-    [ -z "$delay" ] && delay=1
+    [ -z "$delay" ] && delay=15
     [ ! -f /var/modem.status -a "$delay" -ge 1 ] && {
         echo 'Modem boot delay '$delay's'
         sleep "$delay"
@@ -311,34 +223,30 @@ proto_atc_setup () {
     done
     
 # Check SIMcard and PIN status
-#    atOut=$(COMMAND='AT+CPIN?' gcom -d "$device" -s /etc/gcom/getrun_at.gcom | grep CPIN: | awk -F ' ' '{print $2 $3}' | sed -e 's/[\r\n]//g')
     atOut=$(COMMAND='AT+CPIN?' gcom -d "$device" -s /etc/gcom/getrun_at.gcom)
-    CMEerror=$(echo "$atOut" | grep 'CME ERROR:' | awk -F ':' '{print $2}' | sed -e 's/[\r\n]//g')
-    atOut=$(echo "$atOut" | grep CPIN: | awk -F ' ' '{print $2 $3}' | sed -e 's/[\r\n]//g')
-    if [ -n "$CMEerror" ]
+    if [ -n "$(echo "$atOut" | grep 'CPIN:')" ]
     then
-        [ "${CMEerror::1}" = ' ' ] && CMEerror=${CMEerror:1}
-        echo $CMEerror
-        proto_notify_error "$interface" SIMfailure
+        atOut=$(echo "$atOut" | grep 'CPIN:' | awk -F ':' '{print $2}' | sed -e 's/[\r\n]//g')
+        [ "${atOut::1}" = ' ' ] && atOut=${atOut:1}
+    elif [ -n "$(echo "$atOut" | grep 'CME ERROR:')" ]
+    then
+        atOut=$(echo "$atOut" | grep 'CME ERROR:' | awk -F ':' '{print $2}' | sed -e 's/[\r\n]//g')
+        [ "${atOut::1}" = ' ' ] && atOut=${atOut:1}
+        echo $atOut
+        proto_notify_error "$interface" "$atOut"
         proto_block_restart "$interface"
         return 1
-    elif [ -z "$atOut" ]
-    then
+    else
         echo 'Can not read SIMcard'
         proto_notify_error "$interface" SIMreadfailure
         proto_block_restart "$interface"
         return 1
     fi
-
-#    while [ -z "$atOut" ]
-#    do
-#        atOut=$(COMMAND='AT+CPIN?' gcom -d "$device" -s /etc/gcom/getrun_at.gcom | grep CPIN: | awk -F ' ' '{print $2 $3}' | sed -e 's/[\r\n]//g')
-#   done
     case $atOut in
         READY )
             echo SIMcard ready
             ;;
-        SIMPIN )
+        'SIM PIN' )
             if [ -z "$pincode" ]
             then
                 echo PINcode required but missing
@@ -410,15 +318,15 @@ proto_atc_setup () {
     [ "$atOut" != 'OK' ] && echo $atOut
 
 # Configure authentication, user and password, profile 0 and 1
-    atOut=$(COMMAND='AT^AUTHDATA=0,$auth,,"'$username'","'$password'"' gcom -d "$device" -s /etc/gcom/run_at.gcom)
+    atOut=$(COMMAND='AT^AUTHDATA=0,'$auth',,"'$username'","'$password'"' gcom -d "$device" -s /etc/gcom/run_at.gcom)
     [ "$atOut" != 'OK' ] && echo $atOut
-    atOut=$(COMMAND='AT^AUTHDATA=1,$auth,,"'$username'","'$password'"' gcom -d "$device" -s /etc/gcom/run_at.gcom)
+    atOut=$(COMMAND='AT^AUTHDATA=1,'$auth',,"'$username'","'$password'"' gcom -d "$device" -s /etc/gcom/run_at.gcom)
     [ "$atOut" != 'OK' ] && echo $atOut
 
 # SMS config
-    atOut=$(COMMAND='AT+CMGF=1' gcom -d "$device" -s /etc/gcom/run_at.gcom)
+    atOut=$(COMMAND='AT+CMGF=0' gcom -d "$device" -s /etc/gcom/run_at.gcom)
     [ "$atOut" != 'OK' ] && echo $atOut
-    atOut=$(COMMAND='AT+CSCS="UCS2"' gcom -d "$device" -s /etc/gcom/run_at.gcom)
+    atOut=$(COMMAND='AT+CSCS="GSM"' gcom -d "$device" -s /etc/gcom/run_at.gcom)
     [ "$atOut" != 'OK' ] && echo $atOut
     atOut=$(COMMAND='AT+CNMI=2,1' gcom -d "$device" -s /etc/gcom/run_at.gcom)
     [ "$atOut" != 'OK' ] && echo $atOut
@@ -466,11 +374,6 @@ proto_atc_setup () {
                             else
                                 echo ' '$conStatus' -> registered - home network'$(CxREG $URCvalue)
                                 conStatus='registered'
-                                [ $re_connect -eq 1 ] && {
-                                    pdp_still_active=0
-                                    echo Activate session CEREG
-#                                    COMMAND='AT^NDISDUP=1,1' gcom -d "$device" -s /etc/gcom/at.gcom
-                                }
                             fi
                             ;;
                         2 )
@@ -479,9 +382,11 @@ proto_atc_setup () {
                             ;;
                         3 )
                             echo 'Registration denied, '$(CxREG $URCvalue)
-                            proto_notify_error "$interface" REG_DENIED
-                            proto_block_restart "$interface"
-                            return 1
+                            [ $connected -eq 0 ] && {
+                                proto_notify_error "$interface" REG_DENIED
+                                proto_block_restart "$interface"
+                                return 1
+                            }
                             ;;
                         4 )
                             echo 'Unknown'
@@ -497,18 +402,13 @@ proto_atc_setup () {
                             else
                                 echo ' '$conStatus' -> registered - roaming'$(CxREG $URCvalue)
                                 conStatus='registered'
-                                [ $re_connect -eq 1 ] && {
-                                    pdp_still_active=0
-                                    echo Activate session CEREG
-#                                    COMMAND='AT^NDISDUP=1,1' gcom -d "$device" -s /etc/gcom/at.gcom
-                                }
                             fi
                             ;;
                         esac
                     ;;
                 
                 +COPS )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     cops_format=$(echo $URCvalue | awk -F ',' '{print $2}')
                     [ $cops_format -eq 0 ] && {
                         operator=$(echo $URCvalue | awk -F ',' '{print $3}' | sed -e 's/"//g')
@@ -522,134 +422,163 @@ proto_atc_setup () {
                         OK_received=1
                     }
                     ;;
-                
+
                 ^NWTIME )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
-                    [ $re_connect -eq 0 ] && {
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
+                    [ $connected -eq 0 ] && {
                         COMMAND='AT+COPS=3,0;+COPS?;+COPS=3,2;+COPS?' gcom -d "$device" -s /etc/gcom/at.gcom
-                        re_connect=1
                     } || {
-                        echo Activate session NWTIME
+                        echo 'Re-activate session'
                         COMMAND='AT^NDISSTATQRY?' gcom -d "$device" -s /etc/gcom/at.gcom
                     }
                     ;;
 
-                ^NDISSTAT )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
-                    stat=$(echo $URCvalue | awk -F ',' '{print $1}')
-                    err_code=$(echo $URCvalue | awk -F ',' '{print $2}')
-                    pdp_type=$(echo $URCvalue | awk -F ',' '{print $4}')
-                    [ "$stat" -eq 1 ] && {
-                        COMMAND='AT+CGCONTRDP=1' gcom -d "$device" -s /etc/gcom/at.gcom
-                    }
-                    [ "$stat" -eq 0 ] && {
-                        echo Session disconnected
-                        release_interface
-                    }
-                    ;;
-
-                ^NDISSTATQRY )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
-                    stat=$(echo $URCvalue | awk -F ',' '{print $1}')
-                    [ "$stat" -eq 0 ] && {
-                        OK_received=1
-                    }
-                    ;;
-
-                ^DHCP )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
-                    v4address=$(hua_ip_hex2dec $(echo $URCvalue | awk -F ',' '{print $1}'))
-                    v4netmask=$(hua_ip_hex2dec $(echo $URCvalue | awk -F ',' '{print $2}'))
-                    v4gateway=$(hua_ip_hex2dec $(echo $URCvalue | awk -F ',' '{print $3}'))
-                    v4dns1=$(hua_ip_hex2dec $(echo $URCvalue | awk -F ',' '{print $5}'))
-                    v4dns2=$(hua_ip_hex2dec $(echo $URCvalue | awk -F ',' '{print $6}'))
-                    OK_received=0
-                    update_IPv4
-                    ;;
-
                 +CGCONTRDP )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     [ -z "$used_apn" ] && {
                         used_apn=$(echo $URCvalue | awk -F ',' '{print $3}')
                         used_apn=$(full_apn $used_apn)
                         [ "$apn" != $used_apn ] && echo 'Using network default APN: '$used_apn
                     }
-                    OK_received=2
+                    IPv6=$(echo $URCvalue | grep -a ':')
+                    if [ -z "$IPv6" ]
+                    then
+                        v4address=$(echo $URCvalue | awk -F ',' '{print $4}' | awk -F '.' '{print $1"."$2"."$3"."$4}')
+                        v4netmask=$(subnet_calc $v4address)
+                        v4gateway=$(echo $v4netmask | awk -F ' ' '{print $2}')
+                        v4netmask=$(echo $v4netmask | awk -F ' ' '{print $1}')
+                        v4dns1=$(echo $URCvalue | awk -F ',' '{print $6}')
+                        v4dns2=$(echo $URCvalue | awk -F ',' '{print $7}')
+                    else
+                        v6address=$(echo $URCvalue | awk -F ',' '{print $4}')
+                        v6dns1=$(echo $URCvalue | awk -F ',' '{print $6}')
+                        v6dns2=$(echo $URCvalue | awk -F ',' '{print $7}')
+                    fi
                     ;;
 
-                +CGPADDR )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
-                    IPaddress1=$(echo $URCvalue | awk -F ',' '{print $2}')
-                    IPaddress2=$(echo $URCvalue | awk -F ',' '{print $3}')
-                    [ $(IPversion $IPaddress1) = 'IPv4' ] && v4address=$IPaddress1
-                    [ $(IPversion $IPaddress1) = 'IPv6' ] && v6address=$(IPv6_decTOhex $IPaddress1)
-                    [ $(IPversion $IPaddress2) = 'IPv6' ] && {
-                        v6address=$(IPv6_decTOhex $IPaddress2)
-                        dual_stack=1
+
+                ^NDISSTAT )
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
+                    stat=$(echo $URCvalue | awk -F ',' '{print $1}')
+                    err_code=$(echo $URCvalue | awk -F ',' '{print $2}')
+                    pdp_type=$(echo $URCvalue | awk -F ',' '{print $4}')
+                    [ "$stat" -eq 0 -a $connected -eq 1 ] && {
+                        echo Session disconnected
+                        proto_init_update "$ifname" 0
+                        proto_send_update "$interface"
+                        connected=2
                     }
-                    OK_received=3
-                    [ $re_connect -eq 0 ] && re_connect=1
                     ;;
 
-                '+CME ERROR' )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
-                    [ $OK_received -eq 1 ] && {
-                        echo 'Activate session failed, check your APN settings'
-                        proto_notify_error "$interface" SESSION_FAILED
-                        proto_block_restart "$interface"
-                        return 1
+                ^NDISSTATQRY )
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
+                    dual_stack=''
+                    stat=$(echo $URCvalue | awk -F ',' '{print $1}')
+                    pdp_type=$(echo $URCvalue | awk -F ',' '{print $4}')
+                    [ "$stat" -eq 1 ] && {
+                        dual_stack=$pdp_type
                     }
+                    stat=$(echo $URCvalue | awk -F ',' '{print $5}')
+                    pdp_type=$(echo $URCvalue | awk -F ',' '{print $8}')
+                    [ "$stat" -eq 1 ] && {
+                        dual_stack=$dual_stack$pdp_type
+                    }
+                    ;;
+
+                ^DHCP )
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
+                    v4address=$(hua_ip_hex2dec $(echo $URCvalue | awk -F ',' '{print $1}'))
+                    v4netmask=$(subnet_calc $v4address)
+                    v4gateway=$(echo $v4netmask | awk -F ' ' '{print $2}')
+                    v4netmask=$(echo $v4netmask | awk -F ' ' '{print $1}')
+                    v4dns1=$(hua_ip_hex2dec $(echo $URCvalue | awk -F ',' '{print $5}'))
+                    v4dns2=$(hua_ip_hex2dec $(echo $URCvalue | awk -F ',' '{print $6}'))
+                    update_IPv4
+                    ;;
+
+                ^DHCPV6 )
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
+                    v6dns1=$(echo $URCvalue | awk -F ',' '{print $5}')
+                    v6dns2=$(echo $URCvalue | awk -F ',' '{print $6}')
+                    OK_received=0
+                    update_DHCPv6
                     ;;
 
                 +CMTI )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     sms_index=$(echo $URCvalue | awk -F ',' '{print $2}')
                     COMMAND='AT+CMGR='$sms_index gcom -d "$device" -s /etc/gcom/at.gcom
                     ;;
 
                 +CMGR )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
-                    sms_sender=$(echo $URCvalue | awk -F ',' '{print $2}')
-                    sms_sender=$(ucs2TOascii $sms_sender)
-                    sms_date=$(echo $URCvalue | awk -F ',' -v OFS=',' '{print $4, $5}')
-                    sms_date=$(echo $sms_date | awk -F '/' '{print $1 $2 $3}' | sed -e 's/,/_/g' | sed -e 's/://g')
-                    sms_date=${sms_date:: -3}
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
                     OK_received=11
                     ;;
 
+                +CMGS )
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
+                    echo 'SMS successfully sent'
+                    ;;
+
                 ERROR )
-                    [ "$atc_debug" -gt 1 ] && echo $URCline
-                    
+                    [ "$atc_debug" -ge 1 ] && echo $URCline
+                    [ $OK_received -eq 3 ] && {
+                        echo 'IPv6 not supported by the modem'
+#                        update_DHCPv6
+                    }
                     ;;
 
                 OK )
                     [ "$atc_debug" -gt 1 ] && echo $URCline
+                    [ $OK_received -eq 12 ] && {
+                        /usr/bin/atc_rx_pdu_sms $sms_pdu 2> /dev/null
+                        [ $sms_index -gt 1 ] && {
+                            sms_index=$((sms_index-1))
+                            COMMAND='AT+CMGR='$sms_index gcom -d "$device" -s /etc/gcom/at.gcom
+                        } || {
+                            OK_received=0
+                        }
+                    }
                     [ $OK_received -eq 11 ] && {
                         COMMAND='AT+CMGD='$sms_index gcom -d "$device" -s /etc/gcom/at.gcom
+                        OK_received=12
+                    }
+                    [ $OK_received -eq 4 ] && {
+                        connected=1
+                        proto_init_update "$ifname" 1
+                        proto_set_keep 1
+                        proto_add_data
+                        json_add_string "modem" "${model}"
+                        proto_close_data
+                        proto_send_update "$interface"
+                        [[ "$dual_stack" = *'IPV4'* ]] && update_IPv4
+                        [[ "$dual_stack" = *'IPV6'* ]] && update_DHCPv6
                         OK_received=0
                     }
                     [ $OK_received -eq 3 ] && {
-                        COMMAND='AT^DHCP?' gcom -d "$device" -s /etc/gcom/at.gcom
+                        COMMAND='AT+CGCONTRDP=1' gcom -d "$device" -s /etc/gcom/at.gcom
+                        OK_received=4
                     }
                     [ $OK_received -eq 2 ] && {
-                        COMMAND='AT+CGPADDR=1' gcom -d "$device" -s /etc/gcom/at.gcom
+                        COMMAND='AT^NDISSTATQRY?' gcom -d "$device" -s /etc/gcom/at.gcom
+                        OK_received=3
                     }
                     [ $OK_received -eq 1 ] && {
-                        OK_received=0
                         COMMAND='AT^NDISDUP=1,1' gcom -d "$device" -s /etc/gcom/at.gcom
+                        OK_received=2
                     }
+                    ;;
+
+                ^ECCLIST|^RSSI|^CERSSI|^ANLEVEL|^HCSQ|^LCACELLURC )
+                    [ "$atc_debug" -gt 1 ] && echo $URCline
                     ;;
 
                 * )
                     [ "$atc_debug" -gt 1 ] && echo $URCline
                     [ $OK_received -eq 11 ] && {
-                        echo $sms_date
-                        sms_text=$URCline
-                        sms_text=$(ucs2TOascii $sms_text)
-                        echo 'SMS received from '$sms_sender
-                        echo $sms_sender > $sms_rx_folder'/sms_'$sms_date
-                        echo -e $sms_text >> $sms_rx_folder'/sms_'$sms_date
-                        /usr/bin/atc_rx_sms.sh $sms_rx_folder'/sms_'$sms_date 2> /dev/null
+                        sms_pdu=$URCline
+                        echo 'SMS received'
+                        [ "$atc_debug" -gt 1 ] && echo $sms_pdu >> /var/sms/pdus 2> /dev/null
                     }
                     ;;
             esac
@@ -659,11 +588,7 @@ proto_atc_setup () {
 
 
 proto_atc_teardown() {
-#    local interface="$1"
-#    local device=$(uci get network.${interface}.device)
-#    local atOut
     echo $interface is disconnected
-#    atOut=$(COMMAND='AT+CGACT=0,1' gcom -d "$device" -s /etc/gcom/run_at.gcom)
     proto_init_update "*" 0
     proto_send_update "$interface"
 }
