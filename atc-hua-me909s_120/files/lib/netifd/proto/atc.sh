@@ -1,7 +1,9 @@
 #!/bin/sh
 #
 # AT commands for Huawei ME909s-120 modem
-# 2024-11-26 by mrhaav
+# 2026-02-27 by mrhaav
+#
+# IPv6 not supported
 #
 
 
@@ -50,7 +52,7 @@ update_DHCPv6 () {
 
 subnet_calc () {
     local IPaddr=$1
-    local A B C D 
+    local A B C D
     local x y netaddr res subnet gateway
 
     A=$(echo $IPaddr | awk -F '.' '{print $1}')
@@ -221,7 +223,7 @@ proto_atc_setup () {
         sleep 1
         atOut=$(COMMAND='AT+CMEE=2' gcom -d "$device" -s /etc/gcom/run_at.gcom)
     done
-    
+
 # Check SIMcard and PIN status
     atOut=$(COMMAND='AT+CPIN?' gcom -d "$device" -s /etc/gcom/getrun_at.gcom)
     if [ -n "$(echo "$atOut" | grep 'CPIN:')" ]
@@ -310,7 +312,7 @@ proto_atc_setup () {
     [ "$atOut" != 'OK' ] && echo $atOut
     atOut=$(COMMAND='AT+CEREG=2' gcom -d "$device" -s /etc/gcom/run_at.gcom)
     [ "$atOut" != 'OK' ] && echo $atOut
-    
+
 # Configure PDPcontext, profile 0 and 1
     atOut=$(COMMAND='AT+CGDCONT=0,"'$pdp'","'$apn'"' gcom -d "$device" -s /etc/gcom/run_at.gcom)
     [ "$atOut" != 'OK' ] && echo $atOut
@@ -334,7 +336,7 @@ proto_atc_setup () {
 # Disable flightmode
     echo Activate modem
     COMMAND='AT+CFUN=1' gcom -d "$device" -s /etc/gcom/at.gcom
-    
+
     while read URCline
     do
         firstASCII=$(printf "%d" \'${URCline::1})
@@ -406,7 +408,7 @@ proto_atc_setup () {
                             ;;
                         esac
                     ;;
-                
+
                 +COPS )
                     [ "$atc_debug" -ge 1 ] && echo $URCline
                     cops_format=$(echo $URCvalue | awk -F ',' '{print $2}')
@@ -427,9 +429,11 @@ proto_atc_setup () {
                     [ "$atc_debug" -ge 1 ] && echo $URCline
                     [ $connected -eq 0 ] && {
                         COMMAND='AT+COPS=3,0;+COPS?;+COPS=3,2;+COPS?' gcom -d "$device" -s /etc/gcom/at.gcom
-                    } || {
+                    }
+                    [ $connected -eq 2 ] && {
                         echo 'Re-activate session'
-                        COMMAND='AT^NDISSTATQRY?' gcom -d "$device" -s /etc/gcom/at.gcom
+                        COMMAND='AT^NDISDUP=1,1' gcom -d "$device" -s /etc/gcom/at.gcom
+                        OK_received=0
                     }
                     ;;
 
@@ -462,11 +466,16 @@ proto_atc_setup () {
                     stat=$(echo $URCvalue | awk -F ',' '{print $1}')
                     err_code=$(echo $URCvalue | awk -F ',' '{print $2}')
                     pdp_type=$(echo $URCvalue | awk -F ',' '{print $4}')
-                    [ "$stat" -eq 0 -a $connected -eq 1 ] && {
+                    [ "$stat" -eq 0 -a "$pdp_type" = 'IPV4' -a $connected -eq 1 ] && {
                         echo Session disconnected
                         proto_init_update "$ifname" 0
                         proto_send_update "$interface"
                         connected=2
+                    }
+                    [ "$stat" -eq 1 -a "$pdp_type" = 'IPV4' ] && {
+                        dual_stack=$pdp_type
+                        COMMAND='AT+CGCONTRDP=1' gcom -d "$device" -s /etc/gcom/at.gcom
+                        OK_received=4
                     }
                     ;;
 
@@ -478,11 +487,11 @@ proto_atc_setup () {
                     [ "$stat" -eq 1 ] && {
                         dual_stack=$pdp_type
                     }
-                    stat=$(echo $URCvalue | awk -F ',' '{print $5}')
-                    pdp_type=$(echo $URCvalue | awk -F ',' '{print $8}')
-                    [ "$stat" -eq 1 ] && {
-                        dual_stack=$dual_stack$pdp_type
-                    }
+#                    stat=$(echo $URCvalue | awk -F ',' '{print $5}')
+#                    pdp_type=$(echo $URCvalue | awk -F ',' '{print $8}')
+#                    [ "$stat" -eq 1 ] && {
+#                        dual_stack=$dual_stack$pdp_type
+#                    }
                     ;;
 
                 ^DHCP )
@@ -565,7 +574,7 @@ proto_atc_setup () {
                     }
                     [ $OK_received -eq 1 ] && {
                         COMMAND='AT^NDISDUP=1,1' gcom -d "$device" -s /etc/gcom/at.gcom
-                        OK_received=2
+                        OK_received=0
                     }
                     ;;
 
