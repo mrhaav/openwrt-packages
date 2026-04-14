@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
  
 PKG_NAME:=atc-hua-e3372h_320
-PKG_VERSION:=2025-11-20
-PKG_RELEASE:=0.1
+PKG_VERSION:=2025.11.20
+PKG_RELEASE:=1
 
 PKG_MAINTAINER:=Henrik Ginstmark <henrik@ginstmark.se>
 PKG_LICENSE:=GPL-2.0
