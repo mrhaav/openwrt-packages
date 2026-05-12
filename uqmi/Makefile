@@ -39,7 +39,8 @@ endef
 	-ffunction-sections \
 	-fdata-sections \
 	-Wno-error=dangling-pointer \
-	-Wno-error=maybe-uninitialized
+	-Wno-error=maybe-uninitialized \
+	-Wno-incompatible-pointer-types
 
 TARGET_LDFLAGS += -Wl,--gc-sections
 
